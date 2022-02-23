@@ -1,15 +1,20 @@
 #[macro_use]
 extern crate glium;
 
-use glium::index::PrimitiveType;
 #[allow(unused_imports)]
 use glium::{glutin, Surface};
+use glium::{
+    glutin::{event::VirtualKeyCode, event_loop::ControlFlow},
+    index::PrimitiveType,
+};
+
+use crate::helper::Action;
 mod helper;
 
 fn main() {
     let event_loop = glutin::event_loop::EventLoop::new();
     let wb = glutin::window::WindowBuilder::new();
-    let cb = glutin::ContextBuilder::new();
+    let cb = glutin::ContextBuilder::new().with_vsync(true);
     let display = glium::Display::new(wb, cb, &event_loop).unwrap();
     let vertex_buffer = {
         #[derive(Copy, Clone)]
@@ -94,8 +99,7 @@ fn main() {
     )
     .unwrap();
 
-    helper::run_loop(event_loop, move |events| {
-        println!("Frame!");
+    let draw = move || {
         let uniforms = uniform! {
             matrix: [
                 [1.0, 0.0, 0.0, 0.0],
@@ -118,5 +122,37 @@ fn main() {
             )
             .unwrap();
         target.finish().unwrap();
+    };
+
+    helper::run_loop(display.gl_window().window(), event_loop, move |events| {
+        println!("Frame!");
+        draw();
+
+        let mut action = Action::Continue;
+        for event in events {
+            match event {
+                glutin::event::Event::WindowEvent { event, .. } => match event {
+                    glutin::event::WindowEvent::KeyboardInput { input, .. } => {
+                        if let glutin::event::ElementState::Pressed = input.state {
+                            if let Some(keycode) = input.virtual_keycode {
+                                if let VirtualKeyCode::Escape = keycode {
+                                    action = Action::Stop;
+                                } else {
+                                    match keycode {
+                                        VirtualKeyCode::Return => {
+                                            println!("Pressed");
+                                        }
+                                        _ => (),
+                                    };
+                                }
+                            }
+                        }
+                    }
+                    _ => (),
+                },
+                _ => (),
+            }
+        }
+        return action;
     });
 }
