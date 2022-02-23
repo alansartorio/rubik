@@ -124,7 +124,8 @@ fn main() {
         target.finish().unwrap();
     };
 
-    helper::run_loop(display.gl_window().window(), event_loop, move |events| {
+    
+    helper::run_loop(event_loop, move |events| {
         println!("Frame!");
         draw();
 
