@@ -1,19 +1,21 @@
 #![feature(type_ascription)]
+#![feature(derive_default_enum)]
 #[macro_use]
 extern crate glium;
 
+mod cube;
 use cgmath::{Transform, *};
 
 use std::{
     f32::consts::PI,
     ops::Mul,
-    time::{self, SystemTime, UNIX_EPOCH},
+    time::SystemTime,
 };
 
 #[allow(unused_imports)]
 use glium::{glutin, Surface};
 use glium::{
-    glutin::{event::VirtualKeyCode, event_loop::ControlFlow},
+    glutin::event::VirtualKeyCode,
     index::PrimitiveType,
 };
 
