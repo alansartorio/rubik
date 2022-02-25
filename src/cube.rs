@@ -1,4 +1,3 @@
-
 use std::{
     borrow::{Borrow, BorrowMut},
     cell::RefCell,
@@ -37,21 +36,18 @@ struct Face {
 
 #[derive(Default)]
 struct FaceBorderView {
-    face: Rc<Face>,
+    face: Weak<Face>,
     side: Sides,
 }
 impl FaceBorderView {
-    fn new(face: Rc<Face>, side: Sides) -> FaceBorderView {
-        FaceBorderView {
-            face,
-            side
-        }
+    fn new(face: Weak<Face>, side: Sides) -> FaceBorderView {
+        FaceBorderView { face, side }
     }
 }
 impl Index<u8> for FaceBorderView {
     type Output = FaceId;
     fn index(&self, index: u8) -> &Self::Output {
-        let face: &Face = self.face.borrow();
+        let face: &Face = self.face.upgrade().unwrap().borrow();
         let tiles = &face.tiles;
         match self.side {
             Sides::Top => [&tiles[0][0], &tiles[0][1], &tiles[0][2]][index as usize],
@@ -64,7 +60,7 @@ impl Index<u8> for FaceBorderView {
 }
 impl IndexMut<u8> for FaceBorderView {
     fn index_mut(&mut self, index: u8) -> &mut Self::Output {
-        let face: &Face = self.face.borrow_mut();
+        let face: &Face = self.face.upgrade().unwrap().borrow_mut();
         let tiles = &face.tiles;
         match self.side {
             Sides::Top => &mut [&tiles[0][0], &tiles[0][1], &tiles[0][2]][index as usize],
@@ -112,10 +108,10 @@ impl Cube {
                     ($topFace: ident, $top: ident, $bottomFace: ident, $bottom: ident, $rightFace: ident, $right: ident, $leftFace: ident, $left: ident) => {
                         {
                             enum_map! {
-                                Sides::Top => FaceBorderView::new(Rc::clone(&$topFace), $top),
-                                Sides::Bottom => FaceBorderView::new(Rc::clone(&$bottomFace), $bottom),
-                                Sides::Right => FaceBorderView::new(Rc::clone(&$rightFace), $right),
-                                Sides::Left => FaceBorderView::new(Rc::clone(&$leftFace), $left),
+                                Sides::Top => FaceBorderView::new(Rc::downgrade(&$topFace), $top),
+                                Sides::Bottom => FaceBorderView::new(Rc::downgrade(&$bottomFace), $bottom),
+                                Sides::Right => FaceBorderView::new(Rc::downgrade(&$rightFace), $right),
+                                Sides::Left => FaceBorderView::new(Rc::downgrade(&$leftFace), $left),
                             }
                         }
                     };
