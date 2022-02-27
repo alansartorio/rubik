@@ -206,7 +206,6 @@ fn main() {
             projection: projection,
         };
 
-        dbg!(timer.elapsed().as_secs_f32());
         glyph_brush.queue(Section {
             text: format!("{:0.2}", timer.elapsed().as_secs_f32()).as_str(),
             bounds: (width as f32, height as f32 / 2.0),
@@ -314,10 +313,8 @@ fn main() {
 
                                         _ => (),
                                     };
-                                    dbg!(timer.elapsed().as_secs_f32());
                                     update_colors(&cube, &mut per_instance);
                                     if movement && !timer.is_running() {
-                                        dbg!("Aca!");
                                         timer.restart();
                                     }
                                     if movement && cube.is_solved() {
