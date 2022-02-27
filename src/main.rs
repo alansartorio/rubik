@@ -8,9 +8,16 @@ extern crate glium_glyph;
 mod cube;
 use cgmath::{Transform, *};
 use cube::Cube;
-use glium_glyph::{glyph_brush::{rusttype::{Font, self}, Section}, GlyphBrush};
+use glium_glyph::{
+    glyph_brush::{
+        rusttype::{self, Font},
+        Section,
+    },
+    GlyphBrush,
+};
 
 use std::{f32::consts::PI, ops::Mul, time::SystemTime};
+use stopwatch::Stopwatch;
 
 #[allow(unused_imports)]
 use glium::{glutin, Surface};
@@ -152,7 +159,6 @@ fn main() {
     let font = Font::from_bytes(font_data).unwrap();
     let mut glyph_brush = GlyphBrush::new(&display, [font]);
 
-
     let update_colors = |cube: &Cube, per_instance: &mut VertexBuffer<Attr>| {
         let mut mapping = per_instance.map();
         for (attr, color) in Iterator::zip(mapping.iter_mut(), cube.flatten_stickers()) {
@@ -172,8 +178,8 @@ fn main() {
     cube.scramble();
     update_colors(&cube, &mut per_instance);
 
-    let timer = SystemTime::now();
-    let mut draw = move |per_instance: &VertexBuffer<_>| {
+    let mut timer = Stopwatch::new();
+    let mut draw = move |per_instance: &VertexBuffer<_>, timer: &Stopwatch| {
         let (width, height) = display.get_framebuffer_dimensions();
         //let rotation = timer.elapsed().unwrap().as_secs_f32();
         //println!("{}", &rotation);
@@ -199,9 +205,10 @@ fn main() {
             view: view,
             projection: projection,
         };
-        
+
+        dbg!(timer.elapsed().as_secs_f32());
         glyph_brush.queue(Section {
-            text: format!("{:0.2}", timer.elapsed().unwrap().as_secs_f32()).as_str(),
+            text: format!("{:0.2}", timer.elapsed().as_secs_f32()).as_str(),
             bounds: (width as f32, height as f32 / 2.0),
             screen_position: (50., 50.),
             color: [1., 1., 1., 1.],
@@ -211,7 +218,7 @@ fn main() {
         });
 
         let mut target = display.draw();
-        
+
         target.clear_color_and_depth((0.0, 0.0, 0.0, 0.0), 1.0);
         glyph_brush.draw_queued(&display, &mut target);
 
@@ -235,7 +242,7 @@ fn main() {
     };
 
     helper::run_loop(event_loop, move |events| {
-        draw(&per_instance);
+        draw(&per_instance, &timer);
 
         let mut action = Action::Continue;
         for event in events {
@@ -247,39 +254,75 @@ fn main() {
                                 if let VirtualKeyCode::Escape = keycode {
                                     action = Action::Stop;
                                 } else {
+                                    let mut movement = false;
                                     match keycode {
                                         VirtualKeyCode::I => {
-                                            cube.rotate_face(cube::FaceId::Right, 1)
+                                            cube.rotate_face(cube::FaceId::Right, 1);
+                                            movement = true;
                                         }
                                         VirtualKeyCode::K => {
-                                            cube.rotate_face(cube::FaceId::Right, -1)
+                                            cube.rotate_face(cube::FaceId::Right, -1);
+                                            movement = true;
                                         }
                                         VirtualKeyCode::E => {
-                                            cube.rotate_face(cube::FaceId::Left, -1)
+                                            cube.rotate_face(cube::FaceId::Left, -1);
+                                            movement = true;
                                         }
                                         VirtualKeyCode::D => {
-                                            cube.rotate_face(cube::FaceId::Left, 1)
+                                            cube.rotate_face(cube::FaceId::Left, 1);
+                                            movement = true;
                                         }
-                                        VirtualKeyCode::J => cube.rotate_face(cube::FaceId::Up, 1),
-                                        VirtualKeyCode::F => cube.rotate_face(cube::FaceId::Up, -1),
-                                        VirtualKeyCode::L => cube.rotate_face(cube::FaceId::Down, -1),
-                                        VirtualKeyCode::S => cube.rotate_face(cube::FaceId::Down, 1),
+                                        VirtualKeyCode::J => {
+                                            cube.rotate_face(cube::FaceId::Up, 1);
+                                            movement = true;
+                                        }
+                                        VirtualKeyCode::F => {
+                                            cube.rotate_face(cube::FaceId::Up, -1);
+                                            movement = true;
+                                        }
+                                        VirtualKeyCode::L => {
+                                            cube.rotate_face(cube::FaceId::Down, -1);
+                                            movement = true;
+                                        }
+                                        VirtualKeyCode::S => {
+                                            cube.rotate_face(cube::FaceId::Down, 1);
+                                            movement = true;
+                                        }
                                         VirtualKeyCode::G => {
-                                            cube.rotate_face(cube::FaceId::Front, -1)
+                                            cube.rotate_face(cube::FaceId::Front, -1);
+                                            movement = true;
                                         }
                                         VirtualKeyCode::H => {
-                                            cube.rotate_face(cube::FaceId::Front, 1)
+                                            cube.rotate_face(cube::FaceId::Front, 1);
+                                            movement = true;
                                         }
                                         VirtualKeyCode::Semicolon => {
-                                            cube.rotate_cube(cube::Rotation::YP)
+                                            cube.rotate_cube(cube::Rotation::YP);
                                         }
-                                        VirtualKeyCode::A => cube.rotate_cube(cube::Rotation::YN),
-                                        VirtualKeyCode::T | VirtualKeyCode::Y => cube.rotate_cube(cube::Rotation::XN),
-                                        VirtualKeyCode::B | VirtualKeyCode::N => cube.rotate_cube(cube::Rotation::XP),
+                                        VirtualKeyCode::A => {
+                                            cube.rotate_cube(cube::Rotation::YN);
+                                        }
+                                        VirtualKeyCode::T | VirtualKeyCode::Y => {
+                                            cube.rotate_cube(cube::Rotation::XN)
+                                        }
+                                        VirtualKeyCode::B | VirtualKeyCode::N => {
+                                            cube.rotate_cube(cube::Rotation::XP)
+                                        }
+                                        VirtualKeyCode::Space => {
+                                            cube.scramble();
+                                        }
 
                                         _ => (),
                                     };
+                                    dbg!(timer.elapsed().as_secs_f32());
                                     update_colors(&cube, &mut per_instance);
+                                    if movement && !timer.is_running() {
+                                        dbg!("Aca!");
+                                        timer.restart();
+                                    }
+                                    if movement && cube.is_solved() {
+                                        timer.stop();
+                                    }
                                 }
                             }
                         }

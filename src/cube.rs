@@ -5,6 +5,8 @@ use std::fmt::{Debug, Display};
 use std::str::FromStr;
 use std::{cell::RefCell, convert::TryInto, rc::Rc};
 use rand::seq::SliceRandom;
+use strum::IntoEnumIterator;
+use strum_macros::EnumIter;
 
 use enum_map::{enum_map, Enum, EnumMap};
 
@@ -21,7 +23,7 @@ use Sides::*;
 #[derive(Debug, Clone)]
 pub struct FaceIdParseError;
 
-#[derive(Debug, Enum, Default, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, Enum, EnumIter, Default, PartialEq, Eq, Clone, Copy)]
 pub enum FaceId {
     #[default]
     Up,
@@ -109,6 +111,14 @@ impl FaceData {
             tiles[2][1],
             tiles[2][2],
         ]
+    }
+
+    fn is_solved(&self) -> bool {
+        let stickers = self.flatten_stickers();
+        let mut iter = stickers.iter();
+        let sticker = *iter.next().unwrap();
+        
+        iter.all(|s| *s == sticker)
     }
 }
 impl FromStr for FaceData {
@@ -296,6 +306,10 @@ impl Cube {
                 }
             },
         }
+    }
+
+    pub fn is_solved(&self) -> bool {
+        FaceId::iter().all(|face| self.get_face(face).is_solved())
     }
 
     pub fn parse(data: &str) -> Cube {
