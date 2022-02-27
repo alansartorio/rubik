@@ -1,6 +1,3 @@
-#![feature(maybe_uninit_uninit_array)]
-#![feature(type_ascription)]
-#![feature(derive_default_enum)]
 #[macro_use]
 extern crate glium;
 extern crate glium_glyph;
@@ -104,8 +101,7 @@ fn main() {
                                         -y as f32 * 0.15,
                                         -0.15 * 3. / 2.,
                                     )))
-                                    .into():
-                                    [[f32; 4]; 4]),
+                                    .into()),
                                 color: [0., 0., 0.],
                             })
                             .collect::<Vec<_>>()

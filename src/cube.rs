@@ -1,18 +1,17 @@
-use std::borrow::{BorrowMut, Borrow};
+use rand::seq::SliceRandom;
+use std::borrow::{Borrow, BorrowMut};
 use std::char;
 use std::convert::TryFrom;
 use std::fmt::{Debug, Display};
 use std::str::FromStr;
 use std::{cell::RefCell, convert::TryInto, rc::Rc};
-use rand::seq::SliceRandom;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
 use enum_map::{enum_map, Enum, EnumMap};
 
-#[derive(Enum, Default)]
+#[derive(Enum)]
 enum Sides {
-    #[default]
     Left,
     Right,
     Top,
@@ -23,9 +22,8 @@ use Sides::*;
 #[derive(Debug, Clone)]
 pub struct FaceIdParseError;
 
-#[derive(Debug, Enum, EnumIter, Default, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, Enum, EnumIter, PartialEq, Eq, Clone, Copy)]
 pub enum FaceId {
-    #[default]
     Up,
     Down,
     Right,
@@ -117,7 +115,7 @@ impl FaceData {
         let stickers = self.flatten_stickers();
         let mut iter = stickers.iter();
         let sticker = *iter.next().unwrap();
-        
+
         iter.all(|s| *s == sticker)
     }
 }
@@ -202,18 +200,32 @@ impl FaceBorderView {
             Sides::Right => [tiles[0][2], tiles[1][2], tiles[2][2]],
             Sides::Bottom => [tiles[2][2], tiles[2][1], tiles[2][0]],
             Sides::Left => [tiles[2][0], tiles[1][0], tiles[0][0]],
-            _ => unreachable!(),
         }
     }
     fn set(&self, row: [FaceId; 3]) {
         //let face: FaceData = self.face.borrow().tiles;
         let tiles = &mut RefCell::borrow_mut(&self.face).tiles;
         match self.side {
-            Sides::Top => [tiles[0][0], tiles[0][1], tiles[0][2]] = row,
-            Sides::Right => [tiles[0][2], tiles[1][2], tiles[2][2]] = row,
-            Sides::Bottom => [tiles[2][2], tiles[2][1], tiles[2][0]] = row,
-            Sides::Left => [tiles[2][0], tiles[1][0], tiles[0][0]] = row,
-            _ => unreachable!(),
+            Sides::Top => {
+                tiles[0][0] = row[0];
+                tiles[0][1] = row[1];
+                tiles[0][2] = row[2];
+            }
+            Sides::Right => {
+                tiles[0][2] = row[0];
+                tiles[1][2] = row[1];
+                tiles[2][2] = row[2];
+            }
+            Sides::Bottom => {
+                tiles[2][2] = row[0];
+                tiles[2][1] = row[1];
+                tiles[2][0] = row[2];
+            }
+            Sides::Left => {
+                tiles[2][0] = row[0];
+                tiles[1][0] = row[1];
+                tiles[0][0] = row[2];
+            }
         }
     }
 }
@@ -332,14 +344,16 @@ impl Cube {
     }
 
     pub fn solved() -> Cube {
-        Cube::parse("
+        Cube::parse(
+            "
             uuu\nuuu\nuuu\n
             ddd\nddd\nddd\n
             rrr\nrrr\nrrr\n
             lll\nlll\nlll\n
             fff\nfff\nfff\n
             bbb\nbbb\nbbb\n
-        ")
+        ",
+        )
     }
 
     pub fn scramble(&self) {
@@ -371,32 +385,30 @@ impl Cube {
         macro_rules! borrow_mut {
             ($face: expr) => {
                 RefCell::borrow_mut(&self.faces[$face].face_data)
-            }
+            };
         }
         macro_rules! borrow {
             ($face: expr) => {
                 RefCell::borrow(&self.faces[$face].face_data)
-            }
+            };
         }
 
         macro_rules! copy {
             ($to: expr, $from: expr) => {
                 *borrow_mut!($to) = *borrow!($from)
-            }
+            };
         }
 
         macro_rules! rotate {
-            ($face1: expr, $face2: expr, $face3: expr, $face4: expr) => {
-                {
-                    let tmp = *borrow!($face4);
-                    copy!($face4, $face3);
-                    copy!($face3, $face2);
-                    copy!($face2, $face1);
-                    *borrow_mut!($face1) = tmp;
-                }
-            }
+            ($face1: expr, $face2: expr, $face3: expr, $face4: expr) => {{
+                let tmp = *borrow!($face4);
+                copy!($face4, $face3);
+                copy!($face3, $face2);
+                copy!($face2, $face1);
+                *borrow_mut!($face1) = tmp;
+            }};
         }
-        
+
         match rotation {
             Rotation::XP => {
                 borrow_mut!(FaceId::Right).rotate();
@@ -404,24 +416,24 @@ impl Cube {
                 borrow_mut!(FaceId::Back).rotate().rotate();
                 rotate!(FaceId::Up, FaceId::Front, FaceId::Down, FaceId::Back);
                 borrow_mut!(FaceId::Back).rotate().rotate();
-            },
+            }
             Rotation::XN => {
                 borrow_mut!(FaceId::Right).rotate().rotate().rotate();
                 borrow_mut!(FaceId::Left).rotate();
                 borrow_mut!(FaceId::Back).rotate().rotate();
                 rotate!(FaceId::Up, FaceId::Back, FaceId::Down, FaceId::Front);
                 borrow_mut!(FaceId::Back).rotate().rotate();
-            },
+            }
             Rotation::YP => {
                 borrow_mut!(FaceId::Up).rotate().rotate().rotate();
                 borrow_mut!(FaceId::Down).rotate();
                 rotate!(FaceId::Front, FaceId::Left, FaceId::Back, FaceId::Right);
-            },
+            }
             Rotation::YN => {
                 borrow_mut!(FaceId::Up).rotate();
                 borrow_mut!(FaceId::Down).rotate().rotate().rotate();
                 rotate!(FaceId::Front, FaceId::Right, FaceId::Back, FaceId::Left);
-            },
+            }
             Rotation::ZP => {
                 borrow_mut!(FaceId::Front).rotate().rotate().rotate();
                 borrow_mut!(FaceId::Back).rotate();
@@ -430,7 +442,7 @@ impl Cube {
                 rotate!(FaceId::Up, FaceId::Right, FaceId::Down, FaceId::Left);
                 borrow_mut!(FaceId::Right).rotate().rotate().rotate();
                 borrow_mut!(FaceId::Left).rotate();
-            },
+            }
             Rotation::ZN => {
                 borrow_mut!(FaceId::Front).rotate().rotate().rotate();
                 borrow_mut!(FaceId::Back).rotate();
@@ -439,7 +451,7 @@ impl Cube {
                 rotate!(FaceId::Up, FaceId::Left, FaceId::Down, FaceId::Right);
                 borrow_mut!(FaceId::Right).rotate();
                 borrow_mut!(FaceId::Left).rotate().rotate().rotate();
-            },
+            }
         }
     }
 
