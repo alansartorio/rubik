@@ -3,10 +3,12 @@
 #![feature(derive_default_enum)]
 #[macro_use]
 extern crate glium;
+extern crate glium_glyph;
 
 mod cube;
 use cgmath::{Transform, *};
 use cube::Cube;
+use glium_glyph::{glyph_brush::{rusttype::{Font, self}, Section}, GlyphBrush};
 
 use std::{f32::consts::PI, ops::Mul, time::SystemTime};
 
@@ -146,6 +148,11 @@ fn main() {
     )
     .unwrap();
 
+    let font_data = include_bytes!("../fonts/Gidole-Regular.ttf");
+    let font = Font::from_bytes(font_data).unwrap();
+    let mut glyph_brush = GlyphBrush::new(&display, [font]);
+
+
     let update_colors = |cube: &Cube, per_instance: &mut VertexBuffer<Attr>| {
         let mut mapping = per_instance.map();
         for (attr, color) in Iterator::zip(mapping.iter_mut(), cube.flatten_stickers()) {
@@ -165,8 +172,8 @@ fn main() {
     cube.scramble();
     update_colors(&cube, &mut per_instance);
 
-    //let timer = SystemTime::now();
-    let draw = move |per_instance: &VertexBuffer<_>| {
+    let timer = SystemTime::now();
+    let mut draw = move |per_instance: &VertexBuffer<_>| {
         let (width, height) = display.get_framebuffer_dimensions();
         //let rotation = timer.elapsed().unwrap().as_secs_f32();
         //println!("{}", &rotation);
@@ -192,10 +199,22 @@ fn main() {
             view: view,
             projection: projection,
         };
+        
+        glyph_brush.queue(Section {
+            text: format!("{:0.2}", timer.elapsed().unwrap().as_secs_f32()).as_str(),
+            bounds: (width as f32, height as f32 / 2.0),
+            screen_position: (50., 50.),
+            color: [1., 1., 1., 1.],
+            scale: rusttype::Scale::uniform(60.),
+            //scale: glyph_brush::Scale::uniform(10.),
+            ..Section::default()
+        });
 
         let mut target = display.draw();
-
+        
         target.clear_color_and_depth((0.0, 0.0, 0.0, 0.0), 1.0);
+        glyph_brush.draw_queued(&display, &mut target);
+
         target
             .draw(
                 (&vertex_buffer, per_instance.per_instance().unwrap()),
