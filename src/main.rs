@@ -1,3 +1,4 @@
+#![feature(maybe_uninit_uninit_array)]
 #![feature(type_ascription)]
 #![feature(derive_default_enum)]
 #[macro_use]
@@ -5,19 +6,13 @@ extern crate glium;
 
 mod cube;
 use cgmath::{Transform, *};
+use cube::Cube;
 
-use std::{
-    f32::consts::PI,
-    ops::Mul,
-    time::SystemTime,
-};
+use std::{f32::consts::PI, ops::Mul, time::SystemTime};
 
 #[allow(unused_imports)]
 use glium::{glutin, Surface};
-use glium::{
-    glutin::event::VirtualKeyCode,
-    index::PrimitiveType,
-};
+use glium::{glutin::event::VirtualKeyCode, index::PrimitiveType, VertexBuffer};
 
 use crate::helper::Action;
 mod helper;
@@ -65,13 +60,12 @@ fn main() {
         )
         .unwrap()
     };
-    let per_instance = {
-        #[derive(Copy, Clone, Debug)]
-        struct Attr {
-            model_to_world: [[f32; 4]; 4],
-            color: [f32; 3],
-        }
-
+    #[derive(Copy, Clone, Debug)]
+    struct Attr {
+        model_to_world: [[f32; 4]; 4],
+        color: [f32; 3],
+    }
+    let mut per_instance = {
         implement_vertex!(Attr, model_to_world, color);
 
         //let colors = [
@@ -79,14 +73,6 @@ fn main() {
         //[colors::GREEN, colors::YELLOW, colors::BLUE],
         //[colors::RED, colors::ORANGE, colors::WHITE],
         //];
-        let colors = [
-            colors::RED,
-            colors::ORANGE,
-            colors::WHITE,
-            colors::YELLOW,
-            colors::BLUE,
-            colors::GREEN,
-        ];
         const HALF_PI: f32 = PI / 2.;
         let rotations = [
             Matrix4::from_angle_x(Rad(HALF_PI)),
@@ -94,23 +80,24 @@ fn main() {
             Matrix4::from_angle_y(Rad(HALF_PI)),
             Matrix4::from_angle_y(Rad(-HALF_PI)),
             Matrix4::identity(),
-            Matrix4::from_angle_x(Rad(PI)),
+            Matrix4::from_angle_y(Rad(PI)),
         ];
-        let data = Iterator::zip(colors.iter(), rotations)
-            .map(|(color, rotation)| {
+        let data = rotations
+            .iter()
+            .map(|rotation| {
                 (-1i16..=1)
-                    .map(|x| {
+                    .map(|y| {
                         (-1i16..=1)
-                            .map(|y| Attr {
+                            .map(|x| Attr {
                                 model_to_world: (rotation
                                     .mul(Matrix4::from_translation(Vector3::new(
-                                        x as f32 * 0.15,
-                                        y as f32 * 0.15,
+                                        -x as f32 * 0.15,
+                                        -y as f32 * 0.15,
                                         -0.15 * 3. / 2.,
                                     )))
                                     .into():
                                     [[f32; 4]; 4]),
-                                color: *color,
+                                color: [0., 0., 0.],
                             })
                             .collect::<Vec<_>>()
                     })
@@ -119,11 +106,7 @@ fn main() {
             })
             .flatten()
             .collect::<Vec<_>>();
-        //let data = [Attr {
-        //color: colors::RED,
-        //model_to_world: matrix::translate(0.0, 0.0, -2.0),
-        //}];
-        println!("{:?}", data.first());
+        //println!("{:?}", data.first());
         glium::VertexBuffer::dynamic(&display, &data).unwrap()
     };
     //let index_buffer =
@@ -163,41 +146,51 @@ fn main() {
     )
     .unwrap();
 
-    let timer = SystemTime::now();
-    let draw = move || {
+    let update_colors = |cube: &Cube, per_instance: &mut VertexBuffer<Attr>| {
+        let mut mapping = per_instance.map();
+        for (attr, color) in Iterator::zip(mapping.iter_mut(), cube.flatten_stickers()) {
+            //attr.color = [1. - attr.color[0], 1. - attr.color[1], 1. - attr.color[2]];
+            attr.color = match color {
+                cube::FaceId::Up => colors::RED,
+                cube::FaceId::Down => colors::ORANGE,
+                cube::FaceId::Right => colors::WHITE,
+                cube::FaceId::Left => colors::YELLOW,
+                cube::FaceId::Front => colors::BLUE,
+                cube::FaceId::Back => colors::GREEN,
+            };
+        }
+    };
+
+    let cube = Cube::solved();
+    cube.scramble();
+    update_colors(&cube, &mut per_instance);
+
+    //let timer = SystemTime::now();
+    let draw = move |per_instance: &VertexBuffer<_>| {
         let (width, height) = display.get_framebuffer_dimensions();
-        let rotation = timer.elapsed().unwrap().as_secs_f32();
-        println!("{}", &rotation);
+        //let rotation = timer.elapsed().unwrap().as_secs_f32();
+        //println!("{}", &rotation);
         //let view: [[f32; 4]; 4] = Matrix4::from_nonuniform_scale(1000.0/width as f32, 1000.0/height as f32, 1.).into();
         let view: [[f32; 4]; 4] = Matrix4::look_at_rh(
-            Matrix4::from_angle_y(Rad(rotation)).transform_point(Point3::new(0., 2., -2.)),
+            Point3::new(0., 1., -1.),
             Point3::new(0., 0., 0.),
             Vector3::new(0., 1., 0.),
         )
         .into();
-        let projection: [[f32; 4]; 4] = ortho(
-            -(width as f32) / 1000.0,
-            width as f32 / 1000.0,
-            -(height as f32) / 1000.0,
-            height as f32 / 1000.0,
-            0.1,
-            100.0,
-        )
-        .into();
+        //let projection: [[f32; 4]; 4] = ortho(
+        //-(width as f32) / 1000.0,
+        //width as f32 / 1000.0,
+        //-(height as f32) / 1000.0,
+        //height as f32 / 1000.0,
+        //0.1,
+        //100.0,
+        //)
+        //.into();
+        let projection: [[f32; 4]; 4] =
+            perspective(Rad(PI / 4.), width as f32 / height as f32, 0.1, 100.).into();
         let uniforms = uniform! {
-            //view: matrix::rotate_y(rotation / 5.),
             view: view,
-                ////.rotate(rotation, 0., 0.)
-                //.orthographic(width as f32, height as f32 , 1.0)
-                ////[matrix::scale(1000.0/width as f32, 1000.0/height as f32, 1.0), matrix::rotate_x(angle)]
-                                ////.iter().fold(matrix::identity(), |a, &b| matrix::multiply(a, b)),
             projection: projection,
-            //projection: Transform::new()
-                //.translate(0., 0., 2.)
-                //.rotate(rotation / 10., rotation, 0.)
-                //.orthographic(width as f32, height as f32 , 10.0)
-                //[matrix::scale(1000.0/width as f32, 1000.0/height as f32, 1.0), matrix::rotate_x(angle)]
-                                //.iter().fold(matrix::identity(), |a, &b| matrix::multiply(a, b)),
         };
 
         let mut target = display.draw();
@@ -223,7 +216,7 @@ fn main() {
     };
 
     helper::run_loop(event_loop, move |events| {
-        draw();
+        draw(&per_instance);
 
         let mut action = Action::Continue;
         for event in events {
@@ -236,11 +229,38 @@ fn main() {
                                     action = Action::Stop;
                                 } else {
                                     match keycode {
-                                        VirtualKeyCode::Return => {
-                                            println!("Pressed");
+                                        VirtualKeyCode::I => {
+                                            cube.rotate_face(cube::FaceId::Right, 1)
                                         }
+                                        VirtualKeyCode::K => {
+                                            cube.rotate_face(cube::FaceId::Right, -1)
+                                        }
+                                        VirtualKeyCode::E => {
+                                            cube.rotate_face(cube::FaceId::Left, -1)
+                                        }
+                                        VirtualKeyCode::D => {
+                                            cube.rotate_face(cube::FaceId::Left, 1)
+                                        }
+                                        VirtualKeyCode::J => cube.rotate_face(cube::FaceId::Up, 1),
+                                        VirtualKeyCode::F => cube.rotate_face(cube::FaceId::Up, -1),
+                                        VirtualKeyCode::L => cube.rotate_face(cube::FaceId::Down, -1),
+                                        VirtualKeyCode::S => cube.rotate_face(cube::FaceId::Down, 1),
+                                        VirtualKeyCode::G => {
+                                            cube.rotate_face(cube::FaceId::Front, -1)
+                                        }
+                                        VirtualKeyCode::H => {
+                                            cube.rotate_face(cube::FaceId::Front, 1)
+                                        }
+                                        VirtualKeyCode::Semicolon => {
+                                            cube.rotate_cube(cube::Rotation::YP)
+                                        }
+                                        VirtualKeyCode::A => cube.rotate_cube(cube::Rotation::YN),
+                                        VirtualKeyCode::T | VirtualKeyCode::Y => cube.rotate_cube(cube::Rotation::XN),
+                                        VirtualKeyCode::B | VirtualKeyCode::N => cube.rotate_cube(cube::Rotation::XP),
+
                                         _ => (),
                                     };
+                                    update_colors(&cube, &mut per_instance);
                                 }
                             }
                         }
