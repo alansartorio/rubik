@@ -37,6 +37,7 @@ fn main() {
     let wb = glutin::window::WindowBuilder::new();
     let cb = glutin::ContextBuilder::new()
         .with_depth_buffer(24)
+        .with_multisampling(4)
         .with_vsync(true);
     let display = glium::Display::new(wb, cb, &event_loop).unwrap();
     let vertex_buffer = {
