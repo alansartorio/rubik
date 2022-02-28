@@ -1,5 +1,4 @@
 use rand::seq::SliceRandom;
-use std::borrow::{Borrow, BorrowMut};
 use std::char;
 use std::convert::TryFrom;
 use std::fmt::{Debug, Display};
@@ -439,18 +438,22 @@ impl Cube {
                 borrow_mut!(FaceId::Back).rotate();
                 borrow_mut!(FaceId::Left).rotate().rotate().rotate();
                 borrow_mut!(FaceId::Right).rotate();
+                borrow_mut!(FaceId::Down).rotate().rotate();
                 rotate!(FaceId::Up, FaceId::Right, FaceId::Down, FaceId::Left);
+                borrow_mut!(FaceId::Down).rotate().rotate();
                 borrow_mut!(FaceId::Right).rotate().rotate().rotate();
                 borrow_mut!(FaceId::Left).rotate();
             }
             Rotation::ZN => {
-                borrow_mut!(FaceId::Front).rotate().rotate().rotate();
-                borrow_mut!(FaceId::Back).rotate();
-                borrow_mut!(FaceId::Left).rotate();
-                borrow_mut!(FaceId::Right).rotate().rotate().rotate();
-                rotate!(FaceId::Up, FaceId::Left, FaceId::Down, FaceId::Right);
-                borrow_mut!(FaceId::Right).rotate();
+                borrow_mut!(FaceId::Front).rotate();
+                borrow_mut!(FaceId::Back).rotate().rotate().rotate();
                 borrow_mut!(FaceId::Left).rotate().rotate().rotate();
+                borrow_mut!(FaceId::Right).rotate();
+                borrow_mut!(FaceId::Down).rotate().rotate();
+                rotate!(FaceId::Up, FaceId::Left, FaceId::Down, FaceId::Right);
+                borrow_mut!(FaceId::Down).rotate().rotate();
+                borrow_mut!(FaceId::Right).rotate().rotate().rotate();
+                borrow_mut!(FaceId::Left).rotate();
             }
         }
     }

@@ -1,11 +1,7 @@
-use std::time::Duration;
 use crate::glutin;
 use crate::glutin::event_loop::EventLoop;
-use glium::glutin::event::{Event, StartCause, WindowEvent};
+use glium::glutin::event::Event;
 use glium::glutin::event_loop::ControlFlow;
-use glium::glutin::window::{self, Window};
-use glutin::event::VirtualKeyCode;
-use std::time::Instant;
 
 pub enum Action {
     Stop,

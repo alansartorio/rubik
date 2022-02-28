@@ -3,7 +3,7 @@ extern crate glium;
 extern crate glium_glyph;
 
 mod cube;
-use cgmath::{Transform, *};
+use cgmath::*;
 use cube::Cube;
 use glium_glyph::{
     glyph_brush::{
@@ -13,7 +13,7 @@ use glium_glyph::{
     GlyphBrush,
 };
 
-use std::{f32::consts::PI, ops::Mul, time::SystemTime};
+use std::{f32::consts::PI, ops::Mul};
 use stopwatch::Stopwatch;
 
 #[allow(unused_imports)]
@@ -291,20 +291,29 @@ fn main() {
                                             cube.rotate_face(cube::FaceId::Front, 1);
                                             movement = true;
                                         }
+                                        VirtualKeyCode::W => {
+                                            cube.rotate_face(cube::FaceId::Back, 1);
+                                            movement = true;
+                                        }
+                                        VirtualKeyCode::O => {
+                                            cube.rotate_face(cube::FaceId::Back, -1);
+                                            movement = true;
+                                        }
                                         VirtualKeyCode::Semicolon => {
-                                            cube.rotate_cube(cube::Rotation::YP);
+                                            cube.rotate_cube(cube::Rotation::YP)
                                         }
-                                        VirtualKeyCode::A => {
-                                            cube.rotate_cube(cube::Rotation::YN);
-                                        }
+                                        VirtualKeyCode::A => cube.rotate_cube(cube::Rotation::YN),
                                         VirtualKeyCode::T | VirtualKeyCode::Y => {
                                             cube.rotate_cube(cube::Rotation::XN)
                                         }
                                         VirtualKeyCode::B | VirtualKeyCode::N => {
                                             cube.rotate_cube(cube::Rotation::XP)
                                         }
+                                        VirtualKeyCode::P => cube.rotate_cube(cube::Rotation::ZP),
+                                        VirtualKeyCode::Q => cube.rotate_cube(cube::Rotation::ZN),
                                         VirtualKeyCode::Space => {
                                             cube.scramble();
+                                            timer.reset();
                                         }
 
                                         _ => (),
