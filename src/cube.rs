@@ -31,6 +31,16 @@ pub enum FaceId {
     Back,
 }
 
+#[derive(Clone, Copy)]
+pub enum MiddleRotation {
+    MP,
+    MN,
+    EP,
+    EN,
+    SP,
+    SN,
+}
+
 pub enum Rotation {
     XP,
     XN,
@@ -342,6 +352,22 @@ impl Cube {
         })
     }
 
+    pub fn solve(&self) {
+        for face in self.faces.values() {
+            let mut face = RefCell::borrow_mut(&face.face_data);
+            let center = face.tiles[1][1];
+            face.tiles[0][0] = center;
+            face.tiles[0][1] = center;
+            face.tiles[0][2] = center;
+            face.tiles[1][0] = center;
+            face.tiles[1][1] = center;
+            face.tiles[1][2] = center;
+            face.tiles[2][0] = center;
+            face.tiles[2][1] = center;
+            face.tiles[2][2] = center;
+        }
+    }
+
     pub fn solved() -> Cube {
         Cube::parse(
             "
@@ -380,6 +406,23 @@ impl Cube {
         self.faces[face].rotate(cw_turns);
     }
 
+    pub fn rotate_double(&self, face: FaceId, cw_turns: i8) {
+        let cw_turns = cw_turns.rem_euclid(4);
+        self.faces[face].rotate(cw_turns);
+
+        let middle = match face {
+            FaceId::Up => MiddleRotation::EN,
+            FaceId::Down => MiddleRotation::EP,
+            FaceId::Right => MiddleRotation::MN,
+            FaceId::Left => MiddleRotation::MP,
+            FaceId::Front => MiddleRotation::SN,
+            FaceId::Back => MiddleRotation::SP,
+        };
+        for _ in 0..cw_turns {
+            self.rotate_middle(middle);
+        }
+    }
+
     pub fn rotate_cube(&self, rotation: Rotation) {
         macro_rules! borrow_mut {
             ($face: expr) => {
@@ -410,17 +453,17 @@ impl Cube {
 
         match rotation {
             Rotation::XP => {
-                borrow_mut!(FaceId::Right).rotate();
-                borrow_mut!(FaceId::Left).rotate().rotate().rotate();
-                borrow_mut!(FaceId::Back).rotate().rotate();
-                rotate!(FaceId::Up, FaceId::Front, FaceId::Down, FaceId::Back);
-                borrow_mut!(FaceId::Back).rotate().rotate();
-            }
-            Rotation::XN => {
                 borrow_mut!(FaceId::Right).rotate().rotate().rotate();
                 borrow_mut!(FaceId::Left).rotate();
                 borrow_mut!(FaceId::Back).rotate().rotate();
                 rotate!(FaceId::Up, FaceId::Back, FaceId::Down, FaceId::Front);
+                borrow_mut!(FaceId::Back).rotate().rotate();
+            }
+            Rotation::XN => {
+                borrow_mut!(FaceId::Right).rotate();
+                borrow_mut!(FaceId::Left).rotate().rotate().rotate();
+                borrow_mut!(FaceId::Back).rotate().rotate();
+                rotate!(FaceId::Up, FaceId::Front, FaceId::Down, FaceId::Back);
                 borrow_mut!(FaceId::Back).rotate().rotate();
             }
             Rotation::YP => {
@@ -456,6 +499,41 @@ impl Cube {
                 borrow_mut!(FaceId::Left).rotate();
             }
         }
+    }
+
+    pub fn rotate_middle(&self, rotation: MiddleRotation) {
+        match rotation {
+            MiddleRotation::MP => {
+                self.rotate_face(FaceId::Left, -1);
+                self.rotate_face(FaceId::Right, 1);
+                self.rotate_cube(Rotation::XN);
+            }
+            MiddleRotation::MN => {
+                for _ in 0..3 {
+                    self.rotate_middle(MiddleRotation::MP);
+                }
+            }
+            MiddleRotation::EP => {
+                self.rotate_face(FaceId::Up, 1);
+                self.rotate_face(FaceId::Down, -1);
+                self.rotate_cube(Rotation::YN);
+            }
+            MiddleRotation::EN => {
+                for _ in 0..3 {
+                    self.rotate_middle(MiddleRotation::EP);
+                }
+            }
+            MiddleRotation::SP => {
+                self.rotate_face(FaceId::Back, 1);
+                self.rotate_face(FaceId::Front, -1);
+                self.rotate_cube(Rotation::ZN);
+            }
+            MiddleRotation::SN => {
+                for _ in 0..3 {
+                    self.rotate_middle(MiddleRotation::SP);
+                }
+            }
+        };
     }
 
     pub fn flatten_stickers(&self) -> Vec<FaceId> {

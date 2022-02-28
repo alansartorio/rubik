@@ -175,6 +175,7 @@ fn main() {
     update_colors(&cube, &mut per_instance);
 
     let mut timer = Stopwatch::new();
+    let mut timer_enabled = true;
     let mut draw = move |per_instance: &VertexBuffer<_>, timer: &Stopwatch| {
         let (width, height) = display.get_framebuffer_dimensions();
         //let rotation = timer.elapsed().unwrap().as_secs_f32();
@@ -299,31 +300,76 @@ fn main() {
                                             cube.rotate_face(cube::FaceId::Back, -1);
                                             movement = true;
                                         }
+                                        VirtualKeyCode::R => {
+                                            cube.rotate_double(cube::FaceId::Left, -1);
+                                            movement = true;
+                                        }
+                                        VirtualKeyCode::U => {
+                                            cube.rotate_double(cube::FaceId::Right, 1);
+                                            movement = true;
+                                        }
+                                        VirtualKeyCode::V => {
+                                            cube.rotate_double(cube::FaceId::Left, 1);
+                                            movement = true;
+                                        }
+                                        VirtualKeyCode::M => {
+                                            cube.rotate_double(cube::FaceId::Right, -1);
+                                            movement = true;
+                                        }
+                                        VirtualKeyCode::C => {
+                                            cube.rotate_double(cube::FaceId::Up, -1);
+                                            movement = true;
+                                        }
+                                        VirtualKeyCode::Comma => {
+                                            cube.rotate_double(cube::FaceId::Up, 1);
+                                            movement = true;
+                                        }
+                                        VirtualKeyCode::Z => {
+                                            cube.rotate_double(cube::FaceId::Down, 1);
+                                            movement = true;
+                                        }
+                                        VirtualKeyCode::Slash => {
+                                            cube.rotate_double(cube::FaceId::Down, -1);
+                                            movement = true;
+                                        }
+                                        VirtualKeyCode::X | VirtualKeyCode::Period => {
+                                            cube.rotate_middle(cube::MiddleRotation::MN);
+                                            movement = true;
+                                        }
+                                        VirtualKeyCode::Key5 | VirtualKeyCode::Key6 => {
+                                            cube.rotate_middle(cube::MiddleRotation::MP);
+                                            movement = true;
+                                        }
                                         VirtualKeyCode::Semicolon => {
                                             cube.rotate_cube(cube::Rotation::YP)
                                         }
                                         VirtualKeyCode::A => cube.rotate_cube(cube::Rotation::YN),
                                         VirtualKeyCode::T | VirtualKeyCode::Y => {
-                                            cube.rotate_cube(cube::Rotation::XN)
+                                            cube.rotate_cube(cube::Rotation::XP)
                                         }
                                         VirtualKeyCode::B | VirtualKeyCode::N => {
-                                            cube.rotate_cube(cube::Rotation::XP)
+                                            cube.rotate_cube(cube::Rotation::XN)
                                         }
                                         VirtualKeyCode::P => cube.rotate_cube(cube::Rotation::ZP),
                                         VirtualKeyCode::Q => cube.rotate_cube(cube::Rotation::ZN),
                                         VirtualKeyCode::Space => {
                                             cube.scramble();
                                             timer.reset();
+                                            timer_enabled = true;
                                         }
-
+                                        VirtualKeyCode::Back => {
+                                            cube.solve();
+                                            timer.reset();
+                                        }
                                         _ => (),
                                     };
                                     update_colors(&cube, &mut per_instance);
-                                    if movement && !timer.is_running() {
+                                    if movement && !timer.is_running() && timer_enabled {
                                         timer.restart();
                                     }
-                                    if movement && cube.is_solved() {
+                                    if cube.is_solved() {
                                         timer.stop();
+                                        timer_enabled = false;
                                     }
                                 }
                             }
