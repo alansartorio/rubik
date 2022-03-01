@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+TryExec=rubik
+Exec=rubik
+Terminal=false
+Categories=Game;LogicGame;
+
+Name=Rubik
+GenericName=Rubik
+Comment=A keyboard driven virtual Rubik's cube made in rust.
+
