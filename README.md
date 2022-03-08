@@ -1,7 +1,7 @@
 
 # Rubik's Cube made in Rust with glium
 
-## Keybinds are compatible with [cstimer](cstimer.net)'s virtual cube:
+## Keybinds are compatible with [cstimer](https://cstimer.net)'s virtual cube:
 
 * i => R
 * k => R'
