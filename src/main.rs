@@ -2,8 +2,6 @@
 extern crate glium;
 extern crate glium_glyph;
 
-use itertools::Itertools;
-
 mod cube;
 use cgmath::*;
 use cube::Cube;
@@ -15,7 +13,7 @@ use glium_glyph::{
     GlyphBrush,
 };
 
-use std::{convert::TryInto, f32::consts::PI, ops::Mul};
+use std::{f32::consts::PI, ops::Mul};
 use stopwatch::Stopwatch;
 
 #[allow(unused_imports)]
