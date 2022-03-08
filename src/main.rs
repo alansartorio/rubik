@@ -3,7 +3,10 @@
 extern crate glium;
 extern crate glium_glyph;
 
+
 mod cube;
+use crate::cube::{Movement, CubeRotation, MiddleRotation, Step};
+use cube::FaceId::*;
 use cgmath::*;
 use cube::Cube;
 use glium_glyph::{
@@ -405,191 +408,191 @@ fn main() {
                                     let mut layer_direction = &X_LAYERS;
                                     match keycode {
                                         VirtualKeyCode::I => {
-                                            cube.rotate_face(cube::FaceId::Right, 1);
+                                            cube.apply_step(Step::new(Movement::Rotation(Right), 1));
                                             movement = true;
                                             affected_layers = vec![0];
                                             rotation = Vector3::unit_x();
                                             layer_direction = &X_LAYERS;
                                         }
                                         VirtualKeyCode::K => {
-                                            cube.rotate_face(cube::FaceId::Right, -1);
+                                            cube.apply_step(Step::new(Movement::Rotation(Right), -1));
                                             movement = true;
                                             affected_layers = vec![0];
                                             rotation = -Vector3::unit_x();
                                             layer_direction = &X_LAYERS;
                                         }
                                         VirtualKeyCode::E => {
-                                            cube.rotate_face(cube::FaceId::Left, -1);
+                                            cube.apply_step(Step::new(Movement::Rotation(Left), -1));
                                             movement = true;
                                             affected_layers = vec![2];
                                             rotation = Vector3::unit_x();
                                             layer_direction = &X_LAYERS;
                                         }
                                         VirtualKeyCode::D => {
-                                            cube.rotate_face(cube::FaceId::Left, 1);
+                                            cube.apply_step(Step::new(Movement::Rotation(Left), 1));
                                             movement = true;
                                             affected_layers = vec![2];
                                             rotation = -Vector3::unit_x();
                                             layer_direction = &X_LAYERS;
                                         }
                                         VirtualKeyCode::J => {
-                                            cube.rotate_face(cube::FaceId::Up, 1);
+                                            cube.apply_step(Step::new(Movement::Rotation(Up), 1));
                                             movement = true;
                                             affected_layers = vec![0];
                                             rotation = -Vector3::unit_y();
                                             layer_direction = &Y_LAYERS;
                                         }
                                         VirtualKeyCode::F => {
-                                            cube.rotate_face(cube::FaceId::Up, -1);
+                                            cube.apply_step(Step::new(Movement::Rotation(Up), -1));
                                             movement = true;
                                             affected_layers = vec![0];
                                             rotation = Vector3::unit_y();
                                             layer_direction = &Y_LAYERS;
                                         }
                                         VirtualKeyCode::L => {
-                                            cube.rotate_face(cube::FaceId::Down, -1);
+                                            cube.apply_step(Step::new(Movement::Rotation(Down), -1));
                                             movement = true;
                                             affected_layers = vec![2];
                                             rotation = -Vector3::unit_y();
                                             layer_direction = &Y_LAYERS;
                                         }
                                         VirtualKeyCode::S => {
-                                            cube.rotate_face(cube::FaceId::Down, 1);
+                                            cube.apply_step(Step::new(Movement::Rotation(Down), 1));
                                             movement = true;
                                             affected_layers = vec![2];
                                             rotation = Vector3::unit_y();
                                             layer_direction = &Y_LAYERS;
                                         }
                                         VirtualKeyCode::G => {
-                                            cube.rotate_face(cube::FaceId::Front, -1);
+                                            cube.apply_step(Step::new(Movement::Rotation(Front), -1));
                                             movement = true;
                                             affected_layers = vec![0];
                                             rotation = -Vector3::unit_z();
                                             layer_direction = &Z_LAYERS;
                                         }
                                         VirtualKeyCode::H => {
-                                            cube.rotate_face(cube::FaceId::Front, 1);
+                                            cube.apply_step(Step::new(Movement::Rotation(Front), 1));
                                             movement = true;
                                             affected_layers = vec![0];
                                             rotation = Vector3::unit_z();
                                             layer_direction = &Z_LAYERS;
                                         }
                                         VirtualKeyCode::W => {
-                                            cube.rotate_face(cube::FaceId::Back, 1);
+                                            cube.apply_step(Step::new(Movement::Rotation(Back), 1));
                                             movement = true;
                                             affected_layers = vec![2];
                                             rotation = -Vector3::unit_z();
                                             layer_direction = &Z_LAYERS;
                                         }
                                         VirtualKeyCode::O => {
-                                            cube.rotate_face(cube::FaceId::Back, -1);
+                                            cube.apply_step(Step::new(Movement::Rotation(Back), -1));
                                             movement = true;
                                             affected_layers = vec![2];
                                             rotation = Vector3::unit_z();
                                             layer_direction = &Z_LAYERS;
                                         }
                                         VirtualKeyCode::R => {
-                                            cube.rotate_double(cube::FaceId::Left, -1);
+                                            cube.apply_step(Step::new(Movement::DoubleRotation(Left), -1));
                                             movement = true;
                                             affected_layers = vec![1, 2];
                                             rotation = Vector3::unit_x();
                                             layer_direction = &X_LAYERS;
                                         }
                                         VirtualKeyCode::U => {
-                                            cube.rotate_double(cube::FaceId::Right, 1);
+                                            cube.apply_step(Step::new(Movement::DoubleRotation(Right), 1));
                                             movement = true;
                                             affected_layers = vec![0, 1];
                                             rotation = Vector3::unit_x();
                                             layer_direction = &X_LAYERS;
                                         }
                                         VirtualKeyCode::V => {
-                                            cube.rotate_double(cube::FaceId::Left, 1);
+                                            cube.apply_step(Step::new(Movement::DoubleRotation(Left), 1));
                                             movement = true;
                                             affected_layers = vec![1, 2];
                                             rotation = -Vector3::unit_x();
                                             layer_direction = &X_LAYERS;
                                         }
                                         VirtualKeyCode::M => {
-                                            cube.rotate_double(cube::FaceId::Right, -1);
+                                            cube.apply_step(Step::new(Movement::DoubleRotation(Right), -1));
                                             movement = true;
                                             affected_layers = vec![0, 1];
                                             rotation = -Vector3::unit_x();
                                             layer_direction = &X_LAYERS;
                                         }
                                         VirtualKeyCode::C => {
-                                            cube.rotate_double(cube::FaceId::Up, -1);
+                                            cube.apply_step(Step::new(Movement::DoubleRotation(Up), -1));
                                             movement = true;
                                             affected_layers = vec![0, 1];
                                             rotation = Vector3::unit_y();
                                             layer_direction = &Y_LAYERS;
                                         }
                                         VirtualKeyCode::Comma => {
-                                            cube.rotate_double(cube::FaceId::Up, 1);
+                                            cube.apply_step(Step::new(Movement::DoubleRotation(Up), 1));
                                             movement = true;
                                             affected_layers = vec![0, 1];
                                             rotation = -Vector3::unit_y();
                                             layer_direction = &Y_LAYERS;
                                         }
                                         VirtualKeyCode::Z => {
-                                            cube.rotate_double(cube::FaceId::Down, 1);
+                                            cube.apply_step(Step::new(Movement::DoubleRotation(Down), 1));
                                             movement = true;
                                             affected_layers = vec![1, 2];
                                             rotation = Vector3::unit_y();
                                             layer_direction = &Y_LAYERS;
                                         }
                                         VirtualKeyCode::Slash => {
-                                            cube.rotate_double(cube::FaceId::Down, -1);
+                                            cube.apply_step(Step::new(Movement::DoubleRotation(Down), -1));
                                             movement = true;
                                             affected_layers = vec![1, 2];
                                             rotation = -Vector3::unit_y();
                                             layer_direction = &Y_LAYERS;
                                         }
                                         VirtualKeyCode::X | VirtualKeyCode::Period => {
-                                            cube.rotate_middle(cube::MiddleRotation::MN);
+                                            cube.apply_step(Step::new(Movement::MiddleRotation(MiddleRotation::M), -1));
                                             movement = true;
                                             affected_layers = vec![1];
                                             rotation = Vector3::unit_x();
                                             layer_direction = &X_LAYERS;
                                         }
                                         VirtualKeyCode::Key5 | VirtualKeyCode::Key6 => {
-                                            cube.rotate_middle(cube::MiddleRotation::MP);
+                                            cube.apply_step(Step::new(Movement::MiddleRotation(MiddleRotation::M), 1));
                                             movement = true;
                                             affected_layers = vec![1];
                                             rotation = -Vector3::unit_x();
                                             layer_direction = &X_LAYERS;
                                         }
                                         VirtualKeyCode::T | VirtualKeyCode::Y => {
-                                            cube.rotate_cube(cube::Rotation::XP);
+                                            cube.apply_step(Step::new(Movement::CubeRotation(CubeRotation::X), 1));
                                             affected_layers = vec![0, 1, 2];
                                             rotation = Vector3::unit_x();
                                             layer_direction = &X_LAYERS;
                                         }
                                         VirtualKeyCode::B | VirtualKeyCode::N => {
-                                            cube.rotate_cube(cube::Rotation::XN);
+                                            cube.apply_step(Step::new(Movement::CubeRotation(CubeRotation::X), -1));
                                             affected_layers = vec![0, 1, 2];
                                             rotation = -Vector3::unit_x();
                                             layer_direction = &X_LAYERS;
                                         }
                                         VirtualKeyCode::Semicolon => {
-                                            cube.rotate_cube(cube::Rotation::YP);
+                                            cube.apply_step(Step::new(Movement::CubeRotation(CubeRotation::Y), 1));
                                             affected_layers = vec![0, 1, 2];
                                             rotation = -Vector3::unit_y();
                                             layer_direction = &Y_LAYERS;
                                         }
                                         VirtualKeyCode::A => {
-                                            cube.rotate_cube(cube::Rotation::YN);
+                                            cube.apply_step(Step::new(Movement::CubeRotation(CubeRotation::Y), -1));
                                             affected_layers = vec![0, 1, 2];
                                             rotation = Vector3::unit_y();
                                             layer_direction = &Y_LAYERS;
                                         }
                                         VirtualKeyCode::P => {
-                                            cube.rotate_cube(cube::Rotation::ZP);
+                                            cube.apply_step(Step::new(Movement::CubeRotation(CubeRotation::Z), 1));
                                             affected_layers = vec![0, 1, 2];
                                             rotation = Vector3::unit_z();
                                             layer_direction = &Z_LAYERS;
                                         }
                                         VirtualKeyCode::Q => {
-                                            cube.rotate_cube(cube::Rotation::ZN);
+                                            cube.apply_step(Step::new(Movement::CubeRotation(CubeRotation::Z), -1));
                                             affected_layers = vec![0, 1, 2];
                                             rotation = -Vector3::unit_z();
                                             layer_direction = &Z_LAYERS;

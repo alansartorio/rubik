@@ -33,21 +33,37 @@ pub enum FaceId {
 
 #[derive(Clone, Copy)]
 pub enum MiddleRotation {
-    MP,
-    MN,
-    EP,
-    EN,
-    SP,
-    SN,
+    M,
+    E,
+    S,
 }
 
-pub enum Rotation {
-    XP,
-    XN,
-    YP,
-    YN,
-    ZP,
-    ZN,
+pub enum CubeRotation {
+    X,
+    Y,
+    Z,
+}
+
+pub enum Movement {
+    Rotation(FaceId),
+    DoubleRotation(FaceId),
+    MiddleRotation(MiddleRotation),
+    CubeRotation(CubeRotation),
+}
+
+pub struct Step {
+    movement: Movement,
+    count: i8,
+}
+
+impl Step {
+    pub fn new(movement: Movement, count: i8) -> Step {
+        Step { movement, count }
+    }
+}
+
+fn normalize_rotation(rotation: i8) -> u8 {
+    rotation.rem_euclid(4) as u8
 }
 
 impl Display for FaceId {
@@ -179,7 +195,7 @@ impl Debug for Face {
 }
 impl Face {
     fn rotate(&self, cw_turns: i8) {
-        let ccw_turns = (4 - cw_turns).rem_euclid(4);
+        let ccw_turns = normalize_rotation(4 - cw_turns);
         for _ in 0..ccw_turns {
             RefCell::borrow_mut(&self.face_data).rotate();
             let tmp = self.sides[Top].get();
@@ -307,14 +323,14 @@ impl Cube {
                         },
                     },
                     FaceId::Back => Face {
-                            face_data: Rc::clone(&back_data),
-                            sides: enum_map! {
-                                Sides::Top => FaceBorderView::new(Rc::clone(&up_data), Top),
-                                Sides::Bottom => FaceBorderView::new(Rc::clone(&down_data), Bottom),
-                                Sides::Left => FaceBorderView::new(Rc::clone(&right_data), Right),
-                                Sides::Right => FaceBorderView::new(Rc::clone(&left_data), Left),
-                            },
+                        face_data: Rc::clone(&back_data),
+                        sides: enum_map! {
+                            Sides::Top => FaceBorderView::new(Rc::clone(&up_data), Top),
+                            Sides::Bottom => FaceBorderView::new(Rc::clone(&down_data), Bottom),
+                            Sides::Left => FaceBorderView::new(Rc::clone(&right_data), Right),
+                            Sides::Right => FaceBorderView::new(Rc::clone(&left_data), Left),
                         },
+                    },
                     FaceId::Front => Face {
                         face_data: Rc::clone(&front_data),
                         sides: enum_map! {
@@ -402,28 +418,36 @@ impl Cube {
         *RefCell::borrow(&self.faces[face].face_data)
     }
 
-    pub fn rotate_face(&self, face: FaceId, cw_turns: i8) {
-        self.faces[face].rotate(cw_turns);
-    }
-
-    pub fn rotate_double(&self, face: FaceId, cw_turns: i8) {
-        let cw_turns = cw_turns.rem_euclid(4);
-        self.faces[face].rotate(cw_turns);
-
-        let middle = match face {
-            FaceId::Up => MiddleRotation::EN,
-            FaceId::Down => MiddleRotation::EP,
-            FaceId::Right => MiddleRotation::MN,
-            FaceId::Left => MiddleRotation::MP,
-            FaceId::Front => MiddleRotation::SN,
-            FaceId::Back => MiddleRotation::SP,
-        };
-        for _ in 0..cw_turns {
-            self.rotate_middle(middle);
+    pub fn apply_step(&self, step: Step) {
+        let count = step.count;
+        match step.movement {
+            Movement::Rotation(rot) => self.rotate_face(rot, count),
+            Movement::DoubleRotation(rot) => self.rotate_double(rot, count),
+            Movement::MiddleRotation(rot) => self.rotate_middle(rot, count),
+            Movement::CubeRotation(rot) => self.rotate_cube(rot, count),
         }
     }
 
-    pub fn rotate_cube(&self, rotation: Rotation) {
+    fn rotate_face(&self, face: FaceId, cw_turns: i8) {
+        self.faces[face].rotate(cw_turns);
+    }
+
+    fn rotate_double(&self, face: FaceId, cw_turns: i8) {
+        let cw_turns = normalize_rotation(cw_turns);
+        self.faces[face].rotate(cw_turns as i8);
+
+        let (middle, count): (_, i8) = match face {
+            FaceId::Up => (MiddleRotation::E, -1),
+            FaceId::Down => (MiddleRotation::E, 1),
+            FaceId::Right => (MiddleRotation::M, -1),
+            FaceId::Left => (MiddleRotation::M, 1),
+            FaceId::Front => (MiddleRotation::S, -1),
+            FaceId::Back => (MiddleRotation::S, 1),
+        };
+        self.rotate_middle(middle, count * cw_turns as i8);
+    }
+
+    fn rotate_cube(&self, rotation: CubeRotation, count: i8) {
         macro_rules! borrow_mut {
             ($face: expr) => {
                 RefCell::borrow_mut(&self.faces[$face].face_data)
@@ -451,89 +475,81 @@ impl Cube {
             }};
         }
 
-        match rotation {
-            Rotation::XP => {
-                borrow_mut!(FaceId::Right).rotate().rotate().rotate();
-                borrow_mut!(FaceId::Left).rotate();
-                borrow_mut!(FaceId::Back).rotate().rotate();
-                rotate!(FaceId::Up, FaceId::Back, FaceId::Down, FaceId::Front);
-                borrow_mut!(FaceId::Back).rotate().rotate();
-            }
-            Rotation::XN => {
-                borrow_mut!(FaceId::Right).rotate();
-                borrow_mut!(FaceId::Left).rotate().rotate().rotate();
-                borrow_mut!(FaceId::Back).rotate().rotate();
-                rotate!(FaceId::Up, FaceId::Front, FaceId::Down, FaceId::Back);
-                borrow_mut!(FaceId::Back).rotate().rotate();
-            }
-            Rotation::YP => {
-                borrow_mut!(FaceId::Up).rotate().rotate().rotate();
-                borrow_mut!(FaceId::Down).rotate();
-                rotate!(FaceId::Front, FaceId::Left, FaceId::Back, FaceId::Right);
-            }
-            Rotation::YN => {
-                borrow_mut!(FaceId::Up).rotate();
-                borrow_mut!(FaceId::Down).rotate().rotate().rotate();
-                rotate!(FaceId::Front, FaceId::Right, FaceId::Back, FaceId::Left);
-            }
-            Rotation::ZP => {
-                borrow_mut!(FaceId::Front).rotate().rotate().rotate();
-                borrow_mut!(FaceId::Back).rotate();
-                borrow_mut!(FaceId::Left).rotate().rotate().rotate();
-                borrow_mut!(FaceId::Right).rotate();
-                borrow_mut!(FaceId::Down).rotate().rotate();
-                rotate!(FaceId::Up, FaceId::Right, FaceId::Down, FaceId::Left);
-                borrow_mut!(FaceId::Down).rotate().rotate();
-                borrow_mut!(FaceId::Right).rotate().rotate().rotate();
-                borrow_mut!(FaceId::Left).rotate();
-            }
-            Rotation::ZN => {
-                borrow_mut!(FaceId::Front).rotate();
-                borrow_mut!(FaceId::Back).rotate().rotate().rotate();
-                borrow_mut!(FaceId::Left).rotate().rotate().rotate();
-                borrow_mut!(FaceId::Right).rotate();
-                borrow_mut!(FaceId::Down).rotate().rotate();
-                rotate!(FaceId::Up, FaceId::Left, FaceId::Down, FaceId::Right);
-                borrow_mut!(FaceId::Down).rotate().rotate();
-                borrow_mut!(FaceId::Right).rotate().rotate().rotate();
-                borrow_mut!(FaceId::Left).rotate();
+        for _ in 0..count.abs() {
+            match rotation {
+                CubeRotation::X if count > 0 => {
+                    borrow_mut!(FaceId::Right).rotate().rotate().rotate();
+                    borrow_mut!(FaceId::Left).rotate();
+                    borrow_mut!(FaceId::Back).rotate().rotate();
+                    rotate!(FaceId::Up, FaceId::Back, FaceId::Down, FaceId::Front);
+                    borrow_mut!(FaceId::Back).rotate().rotate();
+                }
+                CubeRotation::X if count < 0 => {
+                    borrow_mut!(FaceId::Right).rotate();
+                    borrow_mut!(FaceId::Left).rotate().rotate().rotate();
+                    borrow_mut!(FaceId::Back).rotate().rotate();
+                    rotate!(FaceId::Up, FaceId::Front, FaceId::Down, FaceId::Back);
+                    borrow_mut!(FaceId::Back).rotate().rotate();
+                }
+                CubeRotation::Y if count > 0 => {
+                    borrow_mut!(FaceId::Up).rotate().rotate().rotate();
+                    borrow_mut!(FaceId::Down).rotate();
+                    rotate!(FaceId::Front, FaceId::Left, FaceId::Back, FaceId::Right);
+                }
+                CubeRotation::Y if count < 0 => {
+                    borrow_mut!(FaceId::Up).rotate();
+                    borrow_mut!(FaceId::Down).rotate().rotate().rotate();
+                    rotate!(FaceId::Front, FaceId::Right, FaceId::Back, FaceId::Left);
+                }
+                CubeRotation::Z if count > 0 => {
+                    borrow_mut!(FaceId::Front).rotate().rotate().rotate();
+                    borrow_mut!(FaceId::Back).rotate();
+                    borrow_mut!(FaceId::Left).rotate().rotate().rotate();
+                    borrow_mut!(FaceId::Right).rotate();
+                    borrow_mut!(FaceId::Down).rotate().rotate();
+                    rotate!(FaceId::Up, FaceId::Right, FaceId::Down, FaceId::Left);
+                    borrow_mut!(FaceId::Down).rotate().rotate();
+                    borrow_mut!(FaceId::Right).rotate().rotate().rotate();
+                    borrow_mut!(FaceId::Left).rotate();
+                }
+                CubeRotation::Z if count < 0 => {
+                    borrow_mut!(FaceId::Front).rotate();
+                    borrow_mut!(FaceId::Back).rotate().rotate().rotate();
+                    borrow_mut!(FaceId::Left).rotate().rotate().rotate();
+                    borrow_mut!(FaceId::Right).rotate();
+                    borrow_mut!(FaceId::Down).rotate().rotate();
+                    rotate!(FaceId::Up, FaceId::Left, FaceId::Down, FaceId::Right);
+                    borrow_mut!(FaceId::Down).rotate().rotate();
+                    borrow_mut!(FaceId::Right).rotate().rotate().rotate();
+                    borrow_mut!(FaceId::Left).rotate();
+                }
+                _ if count == 0 => (),
+                _ => unreachable!(),
             }
         }
     }
 
-    pub fn rotate_middle(&self, rotation: MiddleRotation) {
-        match rotation {
-            MiddleRotation::MP => {
-                self.rotate_face(FaceId::Left, -1);
-                self.rotate_face(FaceId::Right, 1);
-                self.rotate_cube(Rotation::XN);
-            }
-            MiddleRotation::MN => {
-                for _ in 0..3 {
-                    self.rotate_middle(MiddleRotation::MP);
+    fn rotate_middle(&self, rotation: MiddleRotation, count: i8) {
+        let cw_turns = normalize_rotation(count);
+        for _ in 0..cw_turns {
+            match rotation {
+                MiddleRotation::M => {
+                    self.rotate_face(FaceId::Left, -1);
+                    self.rotate_face(FaceId::Right, 1);
+                    self.rotate_cube(CubeRotation::X, -1);
                 }
-            }
-            MiddleRotation::EP => {
-                self.rotate_face(FaceId::Up, 1);
-                self.rotate_face(FaceId::Down, -1);
-                self.rotate_cube(Rotation::YN);
-            }
-            MiddleRotation::EN => {
-                for _ in 0..3 {
-                    self.rotate_middle(MiddleRotation::EP);
+                MiddleRotation::E => {
+                    self.rotate_face(FaceId::Up, 1);
+                    self.rotate_face(FaceId::Down, -1);
+                    self.rotate_cube(CubeRotation::Y, -1);
                 }
-            }
-            MiddleRotation::SP => {
-                self.rotate_face(FaceId::Back, 1);
-                self.rotate_face(FaceId::Front, -1);
-                self.rotate_cube(Rotation::ZN);
-            }
-            MiddleRotation::SN => {
-                for _ in 0..3 {
-                    self.rotate_middle(MiddleRotation::SP);
+                MiddleRotation::S => {
+                    self.rotate_face(FaceId::Back, 1);
+                    self.rotate_face(FaceId::Front, -1);
+                    self.rotate_cube(CubeRotation::Z, -1);
                 }
-            }
-        };
+            };
+        }
     }
 
     pub fn flatten_stickers(&self) -> Vec<FaceId> {
