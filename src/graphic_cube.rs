@@ -4,7 +4,7 @@ use cgmath::{perspective, Matrix4, Point3, Rad, SquareMatrix, Vector3};
 use glium::{
     backend::Facade,
     index::{NoIndices, PrimitiveType},
-    Frame, Program, Surface, VertexBuffer,
+    Frame, Program, Surface, VertexBuffer, uniform, implement_vertex,
 };
 
 use crate::cube::{self, Cube};

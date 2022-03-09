@@ -1,15 +1,12 @@
 #![windows_subsystem = "windows"]
-#[macro_use]
 extern crate glium;
 extern crate glium_glyph;
 
-mod bound_cube;
-mod cube;
-mod graphic_cube;
 use std::env;
 
-use crate::cube::{Movement, Step};
-use bound_cube::BoundCube;
+
+use rubik::cube::{Movement, Step};
+use rubik::bound_cube::BoundCube;
 use glium_glyph::{
     glyph_brush::{
         rusttype::{self, Font},
@@ -23,9 +20,9 @@ use stopwatch::Stopwatch;
 use glium::glutin::event::VirtualKeyCode;
 #[allow(unused_imports)]
 use glium::{glutin, Surface};
+use rubik::helper;
 
-use crate::helper::Action;
-mod helper;
+use rubik::helper::Action;
 
 fn main() {
     let event_loop = glutin::event_loop::EventLoop::new();
@@ -36,7 +33,7 @@ fn main() {
         .with_vsync(true);
     let display = glium::Display::new(wb, cb, &event_loop).unwrap();
 
-    let font_data = include_bytes!("../fonts/Gidole-Regular.ttf");
+    let font_data = include_bytes!("../../fonts/Gidole-Regular.ttf");
     let font = Font::from_bytes(font_data).unwrap();
     let mut glyph_brush = GlyphBrush::new(&display, [font]);
 

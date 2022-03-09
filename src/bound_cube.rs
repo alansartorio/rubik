@@ -97,10 +97,12 @@ mod layers {
 
 impl BoundCube {
     pub fn new<F: Facade>(facade: &F) -> BoundCube {
-        BoundCube {
+        let mut new = BoundCube {
             graphic_cube: GraphicCube::new(facade),
             cube: Cube::solved(),
-        }
+        };
+        new.update_colors();
+        new
     }
 
     pub fn is_solved(&self) -> bool {

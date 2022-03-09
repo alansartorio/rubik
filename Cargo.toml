@@ -3,6 +3,12 @@ name = "rubik"
 version = "1.0.0"
 edition = "2018"
 
+[[bin]]
+name = "animate"
+
+[[bin]]
+name = "simulator"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]

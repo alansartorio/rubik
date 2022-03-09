@@ -3,6 +3,7 @@ use std::char;
 use std::convert::TryFrom;
 use std::error::Error;
 use std::fmt::{Debug, Display};
+use std::ops::Neg;
 use std::str::FromStr;
 use std::{cell::RefCell, convert::TryInto, rc::Rc};
 use strum::IntoEnumIterator;
@@ -60,22 +61,39 @@ pub struct Step {
     pub count: i8,
 }
 
+impl Neg for Step {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        Self {
+            movement: self.movement,
+            count: -self.count,
+        }
+    }
+}
+
 impl FromStr for Step {
     type Err = Box<dyn Error>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "R" => Ok(Step::new(Movement::Rotation(FaceId::Right), 1)),
+            "R2" => Ok(Step::new(Movement::Rotation(FaceId::Right), 2)),
             "R'" => Ok(Step::new(Movement::Rotation(FaceId::Right), -1)),
             "L" => Ok(Step::new(Movement::Rotation(FaceId::Left), 1)),
+            "L2" => Ok(Step::new(Movement::Rotation(FaceId::Left), 2)),
             "L'" => Ok(Step::new(Movement::Rotation(FaceId::Left), -1)),
             "U" => Ok(Step::new(Movement::Rotation(FaceId::Up), 1)),
+            "U2" => Ok(Step::new(Movement::Rotation(FaceId::Up), 2)),
             "U'" => Ok(Step::new(Movement::Rotation(FaceId::Up), -1)),
             "D" => Ok(Step::new(Movement::Rotation(FaceId::Down), 1)),
+            "D2" => Ok(Step::new(Movement::Rotation(FaceId::Down), 2)),
             "D'" => Ok(Step::new(Movement::Rotation(FaceId::Down), -1)),
             "F" => Ok(Step::new(Movement::Rotation(FaceId::Front), 1)),
+            "F2" => Ok(Step::new(Movement::Rotation(FaceId::Front), 2)),
             "F'" => Ok(Step::new(Movement::Rotation(FaceId::Front), -1)),
             "B" => Ok(Step::new(Movement::Rotation(FaceId::Back), 1)),
+            "B2" => Ok(Step::new(Movement::Rotation(FaceId::Back), 2)),
             "B'" => Ok(Step::new(Movement::Rotation(FaceId::Back), -1)),
 
             "r" => Ok(Step::new(Movement::DoubleRotation(FaceId::Right), 1)),
@@ -117,7 +135,7 @@ impl Step {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct Algorythm(Vec<Step>);
+pub struct Algorythm(pub Vec<Step>);
 
 impl FromStr for Algorythm {
     type Err = Box<dyn Error>;
