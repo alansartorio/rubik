@@ -405,102 +405,34 @@ fn main() {
                                     action = Action::Stop;
                                 } else {
                                     let movement = match keycode {
-                                        VirtualKeyCode::I => {
-                                            Some(Step::new(Movement::Rotation(Right), 1))
-                                        }
-                                        VirtualKeyCode::K => {
-                                            Some(Step::new(Movement::Rotation(Right), -1))
-                                        }
-                                        VirtualKeyCode::E => {
-                                            Some(Step::new(Movement::Rotation(Left), -1))
-                                        }
-                                        VirtualKeyCode::D => {
-                                            Some(Step::new(Movement::Rotation(Left), 1))
-                                        }
-                                        VirtualKeyCode::J => {
-                                            Some(Step::new(Movement::Rotation(Up), 1))
-                                        }
-                                        VirtualKeyCode::F => {
-                                            Some(Step::new(Movement::Rotation(Up), -1))
-                                        }
-                                        VirtualKeyCode::L => {
-                                            Some(Step::new(Movement::Rotation(Down), -1))
-                                        }
-                                        VirtualKeyCode::S => {
-                                            Some(Step::new(Movement::Rotation(Down), 1))
-                                        }
-                                        VirtualKeyCode::G => {
-                                            Some(Step::new(Movement::Rotation(Front), -1))
-                                        }
-                                        VirtualKeyCode::H => {
-                                            Some(Step::new(Movement::Rotation(Front), 1))
-                                        }
-                                        VirtualKeyCode::W => {
-                                            Some(Step::new(Movement::Rotation(Back), 1))
-                                        }
-                                        VirtualKeyCode::O => {
-                                            Some(Step::new(Movement::Rotation(Back), -1))
-                                        }
-                                        VirtualKeyCode::R => {
-                                            Some(Step::new(Movement::DoubleRotation(Left), -1))
-                                        }
-                                        VirtualKeyCode::U => {
-                                            Some(Step::new(Movement::DoubleRotation(Right), 1))
-                                        }
-                                        VirtualKeyCode::V => {
-                                            Some(Step::new(Movement::DoubleRotation(Left), 1))
-                                        }
-                                        VirtualKeyCode::M => {
-                                            Some(Step::new(Movement::DoubleRotation(Right), -1))
-                                        }
-                                        VirtualKeyCode::C => {
-                                            Some(Step::new(Movement::DoubleRotation(Up), -1))
-                                        }
-                                        VirtualKeyCode::Comma => {
-                                            Some(Step::new(Movement::DoubleRotation(Up), 1))
-                                        }
-                                        VirtualKeyCode::Z => {
-                                            Some(Step::new(Movement::DoubleRotation(Down), 1))
-                                        }
-                                        VirtualKeyCode::Slash => {
-                                            Some(Step::new(Movement::DoubleRotation(Down), -1))
-                                        }
-                                        VirtualKeyCode::X | VirtualKeyCode::Period => {
-                                            Some(Step::new(
-                                                Movement::MiddleRotation(MiddleRotation::M),
-                                                -1,
-                                            ))
-                                        }
-                                        VirtualKeyCode::Key5 | VirtualKeyCode::Key6 => {
-                                            Some(Step::new(
-                                                Movement::MiddleRotation(MiddleRotation::M),
-                                                1,
-                                            ))
-                                        }
-                                        VirtualKeyCode::T | VirtualKeyCode::Y => Some(Step::new(
-                                            Movement::CubeRotation(CubeRotation::X),
-                                            1,
-                                        )),
-                                        VirtualKeyCode::B | VirtualKeyCode::N => Some(Step::new(
-                                            Movement::CubeRotation(CubeRotation::X),
-                                            -1,
-                                        )),
-                                        VirtualKeyCode::Semicolon => Some(Step::new(
-                                            Movement::CubeRotation(CubeRotation::Y),
-                                            1,
-                                        )),
-                                        VirtualKeyCode::A => Some(Step::new(
-                                            Movement::CubeRotation(CubeRotation::Y),
-                                            -1,
-                                        )),
-                                        VirtualKeyCode::P => Some(Step::new(
-                                            Movement::CubeRotation(CubeRotation::Z),
-                                            1,
-                                        )),
-                                        VirtualKeyCode::Q => Some(Step::new(
-                                            Movement::CubeRotation(CubeRotation::Z),
-                                            -1,
-                                        )),
+                                        VirtualKeyCode::I => Some("R"),
+                                        VirtualKeyCode::K => Some("R'"),
+                                        VirtualKeyCode::E => Some("L"),
+                                        VirtualKeyCode::D => Some("L'"),
+                                        VirtualKeyCode::J => Some("U"),
+                                        VirtualKeyCode::F => Some("U'"),
+                                        VirtualKeyCode::L => Some("D"),
+                                        VirtualKeyCode::S => Some("D'"),
+                                        VirtualKeyCode::G => Some("F'"),
+                                        VirtualKeyCode::H => Some("F"),
+                                        VirtualKeyCode::W => Some("B"),
+                                        VirtualKeyCode::O => Some("B'"),
+                                        VirtualKeyCode::R => Some("l'"),
+                                        VirtualKeyCode::U => Some("r"),
+                                        VirtualKeyCode::V => Some("l"),
+                                        VirtualKeyCode::M => Some("r'"),
+                                        VirtualKeyCode::C => Some("u'"),
+                                        VirtualKeyCode::Comma => Some("u"),
+                                        VirtualKeyCode::Z => Some("d"),
+                                        VirtualKeyCode::Slash => Some("d'"),
+                                        VirtualKeyCode::X | VirtualKeyCode::Period => Some("M'"),
+                                        VirtualKeyCode::Key5 | VirtualKeyCode::Key6 => Some("M"),
+                                        VirtualKeyCode::T | VirtualKeyCode::Y => Some("x"),
+                                        VirtualKeyCode::B | VirtualKeyCode::N => Some("x'"),
+                                        VirtualKeyCode::Semicolon => Some("y"),
+                                        VirtualKeyCode::A => Some("y'"),
+                                        VirtualKeyCode::P => Some("z"),
+                                        VirtualKeyCode::Q => Some("z'"),
                                         VirtualKeyCode::Space => {
                                             cube.scramble();
                                             timer.reset();
@@ -517,6 +449,7 @@ fn main() {
                                     };
 
                                     if let Some(step) = movement {
+                                        let step: Step = step.parse().unwrap();
                                         let is_rotation = match step.movement {
                                             Movement::CubeRotation(_) => false,
                                             _ => true,
@@ -536,12 +469,9 @@ fn main() {
                                             ],
                                             Movement::MiddleRotation(_) => vec![1],
                                         };
-                                        let x: (Vector3<i8>, _) =
-                                            (Vector3::unit_x(), &layers::X);
-                                        let y: (Vector3<i8>, _) =
-                                            (-Vector3::unit_y(), &layers::Y);
-                                        let z: (Vector3<i8>, _) =
-                                            (Vector3::unit_z(), &layers::Z);
+                                        let x: (Vector3<i8>, _) = (Vector3::unit_x(), &layers::X);
+                                        let y: (Vector3<i8>, _) = (-Vector3::unit_y(), &layers::Y);
+                                        let z: (Vector3<i8>, _) = (Vector3::unit_z(), &layers::Z);
                                         let (mut rotation, layer_direction) = match step.movement {
                                             Movement::CubeRotation(rot) => match rot {
                                                 CubeRotation::X => x,
