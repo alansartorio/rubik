@@ -407,8 +407,8 @@ fn main() {
                                     let movement = match keycode {
                                         VirtualKeyCode::I => Some("R"),
                                         VirtualKeyCode::K => Some("R'"),
-                                        VirtualKeyCode::E => Some("L"),
-                                        VirtualKeyCode::D => Some("L'"),
+                                        VirtualKeyCode::E => Some("L'"),
+                                        VirtualKeyCode::D => Some("L"),
                                         VirtualKeyCode::J => Some("U"),
                                         VirtualKeyCode::F => Some("U'"),
                                         VirtualKeyCode::L => Some("D"),
@@ -437,12 +437,14 @@ fn main() {
                                             cube.scramble();
                                             timer.reset();
                                             timer_enabled = true;
+                                            update_colors(&cube, &mut per_instance);
                                             None
                                         }
                                         VirtualKeyCode::Back => {
                                             cube.solve();
                                             timer.reset();
                                             timer_enabled = false;
+                                            update_colors(&cube, &mut per_instance);
                                             None
                                         }
                                         _ => None,
