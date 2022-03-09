@@ -1,6 +1,7 @@
 use rand::seq::SliceRandom;
 use std::char;
 use std::convert::TryFrom;
+use std::error::Error;
 use std::fmt::{Debug, Display};
 use std::str::FromStr;
 use std::{cell::RefCell, convert::TryInto, rc::Rc};
@@ -31,19 +32,21 @@ pub enum FaceId {
     Back,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MiddleRotation {
     M,
     E,
     S,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CubeRotation {
     X,
     Y,
     Z,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Movement {
     Rotation(FaceId),
     DoubleRotation(FaceId),
@@ -51,14 +54,80 @@ pub enum Movement {
     CubeRotation(CubeRotation),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Step {
-    movement: Movement,
-    count: i8,
+    pub movement: Movement,
+    pub count: i8,
+}
+
+impl FromStr for Step {
+    type Err = Box<dyn Error>;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "R" => Ok(Step::new(Movement::Rotation(FaceId::Right), 1)),
+            "R'" => Ok(Step::new(Movement::Rotation(FaceId::Right), -1)),
+            "L" => Ok(Step::new(Movement::Rotation(FaceId::Left), 1)),
+            "L'" => Ok(Step::new(Movement::Rotation(FaceId::Left), -1)),
+            "U" => Ok(Step::new(Movement::Rotation(FaceId::Up), 1)),
+            "U'" => Ok(Step::new(Movement::Rotation(FaceId::Up), -1)),
+            "D" => Ok(Step::new(Movement::Rotation(FaceId::Down), 1)),
+            "D'" => Ok(Step::new(Movement::Rotation(FaceId::Down), -1)),
+            "F" => Ok(Step::new(Movement::Rotation(FaceId::Front), 1)),
+            "F'" => Ok(Step::new(Movement::Rotation(FaceId::Front), -1)),
+            "B" => Ok(Step::new(Movement::Rotation(FaceId::Back), 1)),
+            "B'" => Ok(Step::new(Movement::Rotation(FaceId::Back), -1)),
+
+            "r" => Ok(Step::new(Movement::DoubleRotation(FaceId::Right), 1)),
+            "r'" => Ok(Step::new(Movement::DoubleRotation(FaceId::Right), -1)),
+            "l" => Ok(Step::new(Movement::DoubleRotation(FaceId::Left), 1)),
+            "l'" => Ok(Step::new(Movement::DoubleRotation(FaceId::Left), -1)),
+            "u" => Ok(Step::new(Movement::DoubleRotation(FaceId::Up), 1)),
+            "u'" => Ok(Step::new(Movement::DoubleRotation(FaceId::Up), -1)),
+            "d" => Ok(Step::new(Movement::DoubleRotation(FaceId::Down), 1)),
+            "d'" => Ok(Step::new(Movement::DoubleRotation(FaceId::Down), -1)),
+            "f" => Ok(Step::new(Movement::DoubleRotation(FaceId::Front), 1)),
+            "f'" => Ok(Step::new(Movement::DoubleRotation(FaceId::Front), -1)),
+            "b" => Ok(Step::new(Movement::DoubleRotation(FaceId::Back), 1)),
+            "b'" => Ok(Step::new(Movement::DoubleRotation(FaceId::Back), -1)),
+
+            "M" => Ok(Step::new(Movement::MiddleRotation(MiddleRotation::M), 1)),
+            "M'" => Ok(Step::new(Movement::MiddleRotation(MiddleRotation::M), -1)),
+            "E" => Ok(Step::new(Movement::MiddleRotation(MiddleRotation::E), 1)),
+            "E'" => Ok(Step::new(Movement::MiddleRotation(MiddleRotation::E), -1)),
+            "S" => Ok(Step::new(Movement::MiddleRotation(MiddleRotation::S), 1)),
+            "S'" => Ok(Step::new(Movement::MiddleRotation(MiddleRotation::S), -1)),
+
+            "x" => Ok(Step::new(Movement::CubeRotation(CubeRotation::X), 1)),
+            "x'" => Ok(Step::new(Movement::CubeRotation(CubeRotation::X), -1)),
+            "y" => Ok(Step::new(Movement::CubeRotation(CubeRotation::Y), 1)),
+            "y'" => Ok(Step::new(Movement::CubeRotation(CubeRotation::Y), -1)),
+            "z" => Ok(Step::new(Movement::CubeRotation(CubeRotation::Z), 1)),
+            "z'" => Ok(Step::new(Movement::CubeRotation(CubeRotation::Z), -1)),
+
+            _ => Err("Invalid Step String".into()),
+        }
+    }
 }
 
 impl Step {
     pub fn new(movement: Movement, count: i8) -> Step {
         Step { movement, count }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct Algorythm(Vec<Step>);
+
+impl FromStr for Algorythm {
+    type Err = Box<dyn Error>;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.split(' ')
+            .filter(|s| !s.is_empty())
+            .map(str::parse::<Step>)
+            .collect::<Result<Vec<Step>, Self::Err>>()
+            .map(Algorythm)
     }
 }
 
@@ -583,6 +652,21 @@ mod tests {
         assert_eq!(
             cube.get_face(FaceId::Front),
             FaceData::from_str("rrr\nfff\nfff").unwrap()
+        );
+    }
+
+    #[test]
+    fn parse_algorythms() {
+        let algorythm: Algorythm = " R R'   L L'   ".parse().unwrap();
+
+        assert_eq!(
+            algorythm,
+            Algorythm(vec![
+                Step::new(Movement::Rotation(FaceId::Right), 1),
+                Step::new(Movement::Rotation(FaceId::Right), -1),
+                Step::new(Movement::Rotation(FaceId::Left), 1),
+                Step::new(Movement::Rotation(FaceId::Left), -1),
+            ])
         );
     }
 }

@@ -404,295 +404,195 @@ fn main() {
                                 if let VirtualKeyCode::Escape = keycode {
                                     action = Action::Stop;
                                 } else {
-                                    let mut movement = false;
-                                    let mut affected_layers = vec![0u8, 1, 2];
-                                    let mut rotation = Vector3::new(0i8, 0, 0);
-                                    let mut layer_direction = &layers::X;
-                                    match keycode {
+                                    let movement = match keycode {
                                         VirtualKeyCode::I => {
-                                            cube.apply_step(Step::new(
-                                                Movement::Rotation(Right),
-                                                1,
-                                            ));
-                                            movement = true;
-                                            affected_layers = vec![0];
-                                            rotation = Vector3::unit_x();
-                                            layer_direction = &layers::X;
+                                            Some(Step::new(Movement::Rotation(Right), 1))
                                         }
                                         VirtualKeyCode::K => {
-                                            cube.apply_step(Step::new(
-                                                Movement::Rotation(Right),
-                                                -1,
-                                            ));
-                                            movement = true;
-                                            affected_layers = vec![0];
-                                            rotation = -Vector3::unit_x();
-                                            layer_direction = &layers::X;
+                                            Some(Step::new(Movement::Rotation(Right), -1))
                                         }
                                         VirtualKeyCode::E => {
-                                            cube.apply_step(Step::new(
-                                                Movement::Rotation(Left),
-                                                -1,
-                                            ));
-                                            movement = true;
-                                            affected_layers = vec![2];
-                                            rotation = Vector3::unit_x();
-                                            layer_direction = &layers::X;
+                                            Some(Step::new(Movement::Rotation(Left), -1))
                                         }
                                         VirtualKeyCode::D => {
-                                            cube.apply_step(Step::new(Movement::Rotation(Left), 1));
-                                            movement = true;
-                                            affected_layers = vec![2];
-                                            rotation = -Vector3::unit_x();
-                                            layer_direction = &layers::X;
+                                            Some(Step::new(Movement::Rotation(Left), 1))
                                         }
                                         VirtualKeyCode::J => {
-                                            cube.apply_step(Step::new(Movement::Rotation(Up), 1));
-                                            movement = true;
-                                            affected_layers = vec![0];
-                                            rotation = -Vector3::unit_y();
-                                            layer_direction = &layers::Y;
+                                            Some(Step::new(Movement::Rotation(Up), 1))
                                         }
                                         VirtualKeyCode::F => {
-                                            cube.apply_step(Step::new(Movement::Rotation(Up), -1));
-                                            movement = true;
-                                            affected_layers = vec![0];
-                                            rotation = Vector3::unit_y();
-                                            layer_direction = &layers::Y;
+                                            Some(Step::new(Movement::Rotation(Up), -1))
                                         }
                                         VirtualKeyCode::L => {
-                                            cube.apply_step(Step::new(
-                                                Movement::Rotation(Down),
-                                                -1,
-                                            ));
-                                            movement = true;
-                                            affected_layers = vec![2];
-                                            rotation = -Vector3::unit_y();
-                                            layer_direction = &layers::Y;
+                                            Some(Step::new(Movement::Rotation(Down), -1))
                                         }
                                         VirtualKeyCode::S => {
-                                            cube.apply_step(Step::new(Movement::Rotation(Down), 1));
-                                            movement = true;
-                                            affected_layers = vec![2];
-                                            rotation = Vector3::unit_y();
-                                            layer_direction = &layers::Y;
+                                            Some(Step::new(Movement::Rotation(Down), 1))
                                         }
                                         VirtualKeyCode::G => {
-                                            cube.apply_step(Step::new(
-                                                Movement::Rotation(Front),
-                                                -1,
-                                            ));
-                                            movement = true;
-                                            affected_layers = vec![0];
-                                            rotation = -Vector3::unit_z();
-                                            layer_direction = &layers::Z;
+                                            Some(Step::new(Movement::Rotation(Front), -1))
                                         }
                                         VirtualKeyCode::H => {
-                                            cube.apply_step(Step::new(
-                                                Movement::Rotation(Front),
-                                                1,
-                                            ));
-                                            movement = true;
-                                            affected_layers = vec![0];
-                                            rotation = Vector3::unit_z();
-                                            layer_direction = &layers::Z;
+                                            Some(Step::new(Movement::Rotation(Front), 1))
                                         }
                                         VirtualKeyCode::W => {
-                                            cube.apply_step(Step::new(Movement::Rotation(Back), 1));
-                                            movement = true;
-                                            affected_layers = vec![2];
-                                            rotation = -Vector3::unit_z();
-                                            layer_direction = &layers::Z;
+                                            Some(Step::new(Movement::Rotation(Back), 1))
                                         }
                                         VirtualKeyCode::O => {
-                                            cube.apply_step(Step::new(
-                                                Movement::Rotation(Back),
-                                                -1,
-                                            ));
-                                            movement = true;
-                                            affected_layers = vec![2];
-                                            rotation = Vector3::unit_z();
-                                            layer_direction = &layers::Z;
+                                            Some(Step::new(Movement::Rotation(Back), -1))
                                         }
                                         VirtualKeyCode::R => {
-                                            cube.apply_step(Step::new(
-                                                Movement::DoubleRotation(Left),
-                                                -1,
-                                            ));
-                                            movement = true;
-                                            affected_layers = vec![1, 2];
-                                            rotation = Vector3::unit_x();
-                                            layer_direction = &layers::X;
+                                            Some(Step::new(Movement::DoubleRotation(Left), -1))
                                         }
                                         VirtualKeyCode::U => {
-                                            cube.apply_step(Step::new(
-                                                Movement::DoubleRotation(Right),
-                                                1,
-                                            ));
-                                            movement = true;
-                                            affected_layers = vec![0, 1];
-                                            rotation = Vector3::unit_x();
-                                            layer_direction = &layers::X;
+                                            Some(Step::new(Movement::DoubleRotation(Right), 1))
                                         }
                                         VirtualKeyCode::V => {
-                                            cube.apply_step(Step::new(
-                                                Movement::DoubleRotation(Left),
-                                                1,
-                                            ));
-                                            movement = true;
-                                            affected_layers = vec![1, 2];
-                                            rotation = -Vector3::unit_x();
-                                            layer_direction = &layers::X;
+                                            Some(Step::new(Movement::DoubleRotation(Left), 1))
                                         }
                                         VirtualKeyCode::M => {
-                                            cube.apply_step(Step::new(
-                                                Movement::DoubleRotation(Right),
-                                                -1,
-                                            ));
-                                            movement = true;
-                                            affected_layers = vec![0, 1];
-                                            rotation = -Vector3::unit_x();
-                                            layer_direction = &layers::X;
+                                            Some(Step::new(Movement::DoubleRotation(Right), -1))
                                         }
                                         VirtualKeyCode::C => {
-                                            cube.apply_step(Step::new(
-                                                Movement::DoubleRotation(Up),
-                                                -1,
-                                            ));
-                                            movement = true;
-                                            affected_layers = vec![0, 1];
-                                            rotation = Vector3::unit_y();
-                                            layer_direction = &layers::Y;
+                                            Some(Step::new(Movement::DoubleRotation(Up), -1))
                                         }
                                         VirtualKeyCode::Comma => {
-                                            cube.apply_step(Step::new(
-                                                Movement::DoubleRotation(Up),
-                                                1,
-                                            ));
-                                            movement = true;
-                                            affected_layers = vec![0, 1];
-                                            rotation = -Vector3::unit_y();
-                                            layer_direction = &layers::Y;
+                                            Some(Step::new(Movement::DoubleRotation(Up), 1))
                                         }
                                         VirtualKeyCode::Z => {
-                                            cube.apply_step(Step::new(
-                                                Movement::DoubleRotation(Down),
-                                                1,
-                                            ));
-                                            movement = true;
-                                            affected_layers = vec![1, 2];
-                                            rotation = Vector3::unit_y();
-                                            layer_direction = &layers::Y;
+                                            Some(Step::new(Movement::DoubleRotation(Down), 1))
                                         }
                                         VirtualKeyCode::Slash => {
-                                            cube.apply_step(Step::new(
-                                                Movement::DoubleRotation(Down),
-                                                -1,
-                                            ));
-                                            movement = true;
-                                            affected_layers = vec![1, 2];
-                                            rotation = -Vector3::unit_y();
-                                            layer_direction = &layers::Y;
+                                            Some(Step::new(Movement::DoubleRotation(Down), -1))
                                         }
                                         VirtualKeyCode::X | VirtualKeyCode::Period => {
-                                            cube.apply_step(Step::new(
+                                            Some(Step::new(
                                                 Movement::MiddleRotation(MiddleRotation::M),
                                                 -1,
-                                            ));
-                                            movement = true;
-                                            affected_layers = vec![1];
-                                            rotation = Vector3::unit_x();
-                                            layer_direction = &layers::X;
+                                            ))
                                         }
                                         VirtualKeyCode::Key5 | VirtualKeyCode::Key6 => {
-                                            cube.apply_step(Step::new(
+                                            Some(Step::new(
                                                 Movement::MiddleRotation(MiddleRotation::M),
                                                 1,
-                                            ));
-                                            movement = true;
-                                            affected_layers = vec![1];
-                                            rotation = -Vector3::unit_x();
-                                            layer_direction = &layers::X;
+                                            ))
                                         }
-                                        VirtualKeyCode::T | VirtualKeyCode::Y => {
-                                            cube.apply_step(Step::new(
-                                                Movement::CubeRotation(CubeRotation::X),
-                                                1,
-                                            ));
-                                            affected_layers = vec![0, 1, 2];
-                                            rotation = Vector3::unit_x();
-                                            layer_direction = &layers::X;
-                                        }
-                                        VirtualKeyCode::B | VirtualKeyCode::N => {
-                                            cube.apply_step(Step::new(
-                                                Movement::CubeRotation(CubeRotation::X),
-                                                -1,
-                                            ));
-                                            affected_layers = vec![0, 1, 2];
-                                            rotation = -Vector3::unit_x();
-                                            layer_direction = &layers::X;
-                                        }
-                                        VirtualKeyCode::Semicolon => {
-                                            cube.apply_step(Step::new(
-                                                Movement::CubeRotation(CubeRotation::Y),
-                                                1,
-                                            ));
-                                            affected_layers = vec![0, 1, 2];
-                                            rotation = -Vector3::unit_y();
-                                            layer_direction = &layers::Y;
-                                        }
-                                        VirtualKeyCode::A => {
-                                            cube.apply_step(Step::new(
-                                                Movement::CubeRotation(CubeRotation::Y),
-                                                -1,
-                                            ));
-                                            affected_layers = vec![0, 1, 2];
-                                            rotation = Vector3::unit_y();
-                                            layer_direction = &layers::Y;
-                                        }
-                                        VirtualKeyCode::P => {
-                                            cube.apply_step(Step::new(
-                                                Movement::CubeRotation(CubeRotation::Z),
-                                                1,
-                                            ));
-                                            affected_layers = vec![0, 1, 2];
-                                            rotation = Vector3::unit_z();
-                                            layer_direction = &layers::Z;
-                                        }
-                                        VirtualKeyCode::Q => {
-                                            cube.apply_step(Step::new(
-                                                Movement::CubeRotation(CubeRotation::Z),
-                                                -1,
-                                            ));
-                                            affected_layers = vec![0, 1, 2];
-                                            rotation = -Vector3::unit_z();
-                                            layer_direction = &layers::Z;
-                                        }
+                                        VirtualKeyCode::T | VirtualKeyCode::Y => Some(Step::new(
+                                            Movement::CubeRotation(CubeRotation::X),
+                                            1,
+                                        )),
+                                        VirtualKeyCode::B | VirtualKeyCode::N => Some(Step::new(
+                                            Movement::CubeRotation(CubeRotation::X),
+                                            -1,
+                                        )),
+                                        VirtualKeyCode::Semicolon => Some(Step::new(
+                                            Movement::CubeRotation(CubeRotation::Y),
+                                            1,
+                                        )),
+                                        VirtualKeyCode::A => Some(Step::new(
+                                            Movement::CubeRotation(CubeRotation::Y),
+                                            -1,
+                                        )),
+                                        VirtualKeyCode::P => Some(Step::new(
+                                            Movement::CubeRotation(CubeRotation::Z),
+                                            1,
+                                        )),
+                                        VirtualKeyCode::Q => Some(Step::new(
+                                            Movement::CubeRotation(CubeRotation::Z),
+                                            -1,
+                                        )),
                                         VirtualKeyCode::Space => {
                                             cube.scramble();
                                             timer.reset();
                                             timer_enabled = true;
+                                            None
                                         }
                                         VirtualKeyCode::Back => {
                                             cube.solve();
                                             timer.reset();
+                                            timer_enabled = false;
+                                            None
                                         }
-                                        _ => (),
+                                        _ => None,
                                     };
-                                    update_colors(&cube, &mut per_instance);
-                                    update_rotations(
-                                        |t| affected_layers.contains(&layer_direction[t as usize]),
-                                        -rotation,
-                                        &mut per_instance,
-                                        animation_lerp,
-                                    );
-                                    animation_lerp = 1.;
-                                    if movement && !timer.is_running() && timer_enabled {
-                                        timer.restart();
-                                    }
-                                    if cube.is_solved() {
-                                        timer.stop();
-                                        timer_enabled = false;
+
+                                    if let Some(step) = movement {
+                                        let is_rotation = match step.movement {
+                                            Movement::CubeRotation(_) => false,
+                                            _ => true,
+                                        };
+                                        let affected_layers = match step.movement {
+                                            Movement::CubeRotation(_) => vec![0, 1, 2],
+                                            Movement::Rotation(face) => vec![match face {
+                                                Right | Up | Front => 0,
+                                                Left | Down | Back => 2,
+                                            }],
+                                            Movement::DoubleRotation(face) => vec![
+                                                match face {
+                                                    Right | Up | Front => 0,
+                                                    Left | Down | Back => 2,
+                                                },
+                                                1,
+                                            ],
+                                            Movement::MiddleRotation(_) => vec![1],
+                                        };
+                                        let x: (Vector3<i8>, _) =
+                                            (Vector3::unit_x(), &layers::X);
+                                        let y: (Vector3<i8>, _) =
+                                            (-Vector3::unit_y(), &layers::Y);
+                                        let z: (Vector3<i8>, _) =
+                                            (Vector3::unit_z(), &layers::Z);
+                                        let (mut rotation, layer_direction) = match step.movement {
+                                            Movement::CubeRotation(rot) => match rot {
+                                                CubeRotation::X => x,
+                                                CubeRotation::Y => y,
+                                                CubeRotation::Z => z,
+                                            },
+                                            Movement::Rotation(face)
+                                            | Movement::DoubleRotation(face) => {
+                                                let (mut rotation, layer) = match face {
+                                                    Right | Left => x,
+                                                    Up | Down => y,
+                                                    Front | Back => z,
+                                                };
+                                                rotation *= match face {
+                                                    Right | Up | Front => 1,
+                                                    _ => -1,
+                                                };
+                                                (rotation, layer)
+                                            }
+                                            Movement::MiddleRotation(rot) => {
+                                                let (rotation, layer) = match rot {
+                                                    MiddleRotation::M => x,
+                                                    MiddleRotation::E => y,
+                                                    MiddleRotation::S => z,
+                                                };
+                                                (-rotation, layer)
+                                            }
+                                        };
+                                        rotation *= step.count;
+
+                                        cube.apply_step(step);
+
+                                        update_colors(&cube, &mut per_instance);
+                                        update_rotations(
+                                            |t| {
+                                                affected_layers
+                                                    .contains(&layer_direction[t as usize])
+                                            },
+                                            -rotation,
+                                            &mut per_instance,
+                                            animation_lerp,
+                                        );
+
+                                        animation_lerp = 1.;
+                                        if is_rotation && !timer.is_running() && timer_enabled {
+                                            timer.restart();
+                                        }
+                                        if is_rotation && cube.is_solved() {
+                                            timer.stop();
+                                            timer_enabled = false;
+                                        }
                                     }
                                 }
                             }
