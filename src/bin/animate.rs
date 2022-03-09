@@ -19,9 +19,7 @@ fn main() {
     let mut cube = BoundCube::new(&display);
     let algorythm: Algorythm = "B2 D' B L' F2 U D' L' D R2 L' F2 B2 L2 D F' L2 U' B2 F D2 R D L2 U".parse().unwrap();
 
-    for &step in &algorythm.0 {
-        cube.apply_step(step);
-    }
+    cube.apply_algorythm_unanimated(&algorythm);
 
     let (tx, rx) = channel::<Step>();
 

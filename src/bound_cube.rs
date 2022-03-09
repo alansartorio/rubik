@@ -2,7 +2,7 @@ use cgmath::Vector3;
 use glium::{backend::Facade, Frame};
 
 use crate::{
-    cube::{Cube, CubeRotation, FaceId::*, MiddleRotation, Movement, Step},
+    cube::{Cube, CubeRotation, FaceId::*, MiddleRotation, Movement, Step, Algorythm},
     graphic_cube::GraphicCube,
 };
 
@@ -186,5 +186,10 @@ impl BoundCube {
             |t| affected_layers.contains(&layer_direction[t as usize]),
             -rotation,
         );
+    }
+
+    pub fn apply_algorythm_unanimated(&mut self, algorythm: &Algorythm) {
+        self.cube.apply_algorythm(algorythm);
+        self.update_colors();
     }
 }

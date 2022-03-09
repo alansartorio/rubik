@@ -134,8 +134,16 @@ impl Step {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Algorythm(pub Vec<Step>);
+
+impl Neg for Algorythm {
+    type Output = Self;
+    
+    fn neg(self) -> Self::Output {
+        Algorythm(self.0.iter().rev().cloned().map(Neg::neg).collect())
+    }
+}
 
 impl FromStr for Algorythm {
     type Err = Box<dyn Error>;
@@ -515,6 +523,12 @@ impl Cube {
         }
     }
 
+    pub fn apply_algorythm(&self, algorythm: &Algorythm) {
+        for &step in &algorythm.0 {
+            self.apply_step(step);
+        }
+    }
+
     fn rotate_face(&self, face: FaceId, cw_turns: i8) {
         self.faces[face].rotate(cw_turns);
     }
@@ -686,5 +700,20 @@ mod tests {
                 Step::new(Movement::Rotation(FaceId::Left), -1),
             ])
         );
+    }
+
+    #[test]
+    fn algorythm_and_reverse() {
+        let algorythm: Algorythm = "B2 D' B L' F2 U D' L' D R2 L' F2 B2 L2 D F' L2 U' B2 F D2 R D L2 U".parse().unwrap();
+
+        let reversed = -algorythm.clone();
+
+        let cube = Cube::solved();
+
+        cube.apply_algorythm(&algorythm);
+        assert!(!cube.is_solved());
+
+        cube.apply_algorythm(&reversed);
+        assert!(cube.is_solved());
     }
 }
