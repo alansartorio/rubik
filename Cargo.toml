@@ -7,6 +7,9 @@ edition = "2018"
 name = "solver"
 
 [[bin]]
+name = "scrambler"
+
+[[bin]]
 name = "animate"
 
 [[bin]]

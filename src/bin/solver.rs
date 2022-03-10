@@ -1,11 +1,13 @@
-use std::collections::HashSet;
+use std::{
+    collections::HashSet,
+    io::{self, Read},
+};
 
 use lazy_static::{__Deref, lazy_static};
 use rubik::{
     cube::{
-        Algorythm, Cube,
+        Cube,
         FaceId::{self, *},
-        Step,
     },
     solver::solve,
 };
@@ -20,12 +22,12 @@ enum Piece {
 const CORNERS: [Piece; 8] = [
     Piece::Corner(Up, Front, Right),
     Piece::Corner(Up, Front, Left),
-    Piece::Corner(Up, Back, Front),
-    Piece::Corner(Up, Back, Back),
+    Piece::Corner(Up, Back, Right),
+    Piece::Corner(Up, Back, Left),
     Piece::Corner(Down, Front, Right),
     Piece::Corner(Down, Front, Left),
-    Piece::Corner(Down, Back, Front),
-    Piece::Corner(Down, Back, Back),
+    Piece::Corner(Down, Back, Right),
+    Piece::Corner(Down, Back, Left),
 ];
 
 const EDGES: [Piece; 12] = [
@@ -44,11 +46,15 @@ const EDGES: [Piece; 12] = [
 ];
 
 lazy_static! {
-    static ref STEPS: [Vec<Piece>; 4] = [
+    static ref STEPS: [Vec<Piece>; 8] = [
         vec![EDGES[0]],
         vec![EDGES[1]],
         vec![EDGES[2]],
-        vec![EDGES[3]]
+        vec![EDGES[3]],
+        vec![CORNERS[0]],
+        vec![CORNERS[1]],
+        vec![CORNERS[2]],
+        vec![CORNERS[3]],
     ];
 }
 
@@ -86,10 +92,13 @@ fn whitelist(cube: &Cube, pieces: Vec<Piece>) -> Cube {
 }
 
 fn main() {
-    let cube = Cube::solved();
-    let scramble = Algorythm::random(20);
-    println!("{}", scramble.to_string());
-    cube.apply_algorythm(&scramble);
+    let mut input_string = String::new();
+    io::stdin().read_to_string(&mut input_string).unwrap();
+    let cube: Cube = input_string.parse().unwrap();
+    //let cube = Cube::solved();
+    //let scramble = Algorythm::random(20);
+    //println!("{}", scramble.to_string());
+    //cube.apply_algorythm(&scramble);
 
     let mut acum_step: Vec<Piece> = vec![];
 

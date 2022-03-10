@@ -148,7 +148,10 @@ impl FromStr for Step {
     type Err = Box<dyn Error>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        MAPPING.get_by_left(s).map(|&m| m).ok_or("Invalid Step String".into())
+        MAPPING
+            .get_by_left(s)
+            .map(|&m| m)
+            .ok_or("Invalid Step String".into())
     }
 }
 
@@ -169,7 +172,11 @@ pub struct Algorythm(pub Vec<Step>);
 
 impl ToString for Algorythm {
     fn to_string(&self) -> String {
-        self.0.iter().map(ToString::to_string).collect::<Vec<_>>().join(" ")
+        self.0
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join(" ")
     }
 }
 
@@ -188,7 +195,6 @@ impl Algorythm {
         let mut rng = rand::thread_rng();
         for _ in 0..depth {
             let choice = *moves.choose(&mut rng).unwrap();
-            
             steps.push(Step::new(Movement::Rotation(choice), 1));
         }
 
@@ -237,7 +243,7 @@ impl Display for StickerType {
     }
 }
 impl TryFrom<char> for StickerType {
-    type Error = FaceIdParseError;
+    type Error = Box<dyn Error>;
 
     fn try_from(value: char) -> Result<Self, Self::Error> {
         match value {
@@ -248,7 +254,7 @@ impl TryFrom<char> for StickerType {
             'f' => Ok(StickerType(Some(FaceId::Front))),
             'b' => Ok(StickerType(Some(FaceId::Back))),
             '0' => Ok(StickerType(None)),
-            _ => Err(FaceIdParseError),
+            _ => Err("Could not parse sticker".into()),
         }
     }
 }
@@ -303,7 +309,7 @@ impl FaceData {
     }
 }
 impl FromStr for FaceData {
-    type Err = FaceIdParseError;
+    type Err = Box<dyn Error>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(FaceData::new(
@@ -311,14 +317,15 @@ impl FromStr for FaceData {
                 .map(|row| {
                     row.trim()
                         .chars()
-                        .map(|c| StickerType::try_from(c).unwrap())
-                        .collect::<Vec<_>>()
+                        .map(|c| StickerType::try_from(c))
+                        .collect::<Result<Vec<_>, _>>()
+                        .map_err(|_| "")?
                         .try_into()
-                        .unwrap()
+                        .map_err(|_| "")
                 })
-                .collect::<Vec<_>>()
+                .collect::<Result<Vec<_>, _>>()?
                 .try_into()
-                .unwrap(),
+                .map_err(|_| "")?,
         ))
     }
 }
@@ -440,6 +447,30 @@ impl Debug for Cube {
     }
 }
 
+impl FromStr for Cube {
+    type Err = Box<dyn Error>;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let faces: [FaceData; 6] = s
+            .trim()
+            .split("\n\n")
+            .map(|face| face.parse::<FaceData>())
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|_| "Error parsing face")?
+            .try_into()
+            .map_err(|_| "Wrong face count")?;
+
+        Ok(Cube::new(enum_map! {
+            FaceId::Up => faces[0],
+            FaceId::Down => faces[1],
+            FaceId::Right => faces[2],
+            FaceId::Left => faces[3],
+            FaceId::Front => faces[4],
+            FaceId::Back => faces[5],
+        }))
+    }
+}
+
 impl Cube {
     fn new(faces: EnumMap<FaceId, FaceData>) -> Cube {
         Cube {
@@ -513,25 +544,6 @@ impl Cube {
 
     pub fn is_solved(&self) -> bool {
         FaceId::iter().all(|face| self.get_face(face).is_solved())
-    }
-
-    pub fn parse(data: &str) -> Cube {
-        let faces: [FaceData; 6] = data
-            .trim()
-            .split("\n\n")
-            .map(|face| face.parse::<FaceData>().unwrap())
-            .collect::<Vec<_>>()
-            .try_into()
-            .unwrap();
-
-        Cube::new(enum_map! {
-            FaceId::Up => faces[0],
-            FaceId::Down => faces[1],
-            FaceId::Right => faces[2],
-            FaceId::Left => faces[3],
-            FaceId::Front => faces[4],
-            FaceId::Back => faces[5],
-        })
     }
 
     pub fn find_corner(&self, corner: [FaceId; 3]) -> Option<[(FaceId, u8, u8); 3]> {
@@ -672,16 +684,16 @@ impl Cube {
     }
 
     pub fn solved() -> Cube {
-        Cube::parse(
-            "
+        "
             uuu\nuuu\nuuu\n
             ddd\nddd\nddd\n
             rrr\nrrr\nrrr\n
             lll\nlll\nlll\n
             fff\nfff\nfff\n
             bbb\nbbb\nbbb\n
-        ",
-        )
+        "
+        .parse()
+        .unwrap()
     }
 
     pub fn scramble_count(&self, move_count: u8) {

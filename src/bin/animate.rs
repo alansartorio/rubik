@@ -1,9 +1,14 @@
-use std::{ops::Neg, sync::mpsc::channel, thread, time::Duration};
+use std::{
+    io::{self, BufRead},
+    sync::mpsc::channel,
+    thread,
+    time::Duration,
+};
 
 use glium::{glutin, Surface};
 use rubik::{
     bound_cube::BoundCube,
-    cube::{Algorythm, Step},
+    cube::{Algorythm, Cube, Step},
     helper,
 };
 use stopwatch::Stopwatch;
@@ -16,28 +21,31 @@ fn main() {
         .with_multisampling(4)
         .with_vsync(true);
     let display = glium::Display::new(wb, cb, &event_loop).unwrap();
-    let mut cube = BoundCube::new(&display);
-    let algorythm: Algorythm = "B2 D' B L' F2 U D' L' D R2 L' F2 B2 L2 D F' L2 U' B2 F D2 R D L2 U".parse().unwrap();
 
-    cube.apply_algorythm_unanimated(&algorythm);
+    let stdin = io::stdin();
+    let lines = stdin.lock().lines().map(|line| line.unwrap());
+    let cube_string = lines
+        .take_while(|line| line != "===")
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    let cube: Cube = cube_string.parse().unwrap();
+
+    let mut cube = BoundCube::from_cube(&display, cube);
 
     let (tx, rx) = channel::<Step>();
 
     thread::spawn(move || {
-        //let algorythm: Algorythm = "R U R' U'".parse().unwrap();
-        let reverse = algorythm.0.iter().rev().cloned().map(Neg::neg);
+        let stdin = io::stdin();
+        let lines = stdin.lock().lines().map(|line| line.unwrap());
 
-        //for step in std::iter::repeat(
-            //algorythm
-                //.0
-                //.iter()
-                //.cloned()
-                //.chain(algorythm.0.iter().rev().cloned().map(Neg::neg)),
-        //)
-        //.flatten()
-        for step in reverse {
-            tx.send(step).unwrap();
-            thread::sleep(Duration::from_millis(200));
+        let algorythms = lines.map(|line| line.parse::<Algorythm>().unwrap());
+
+        for algorythm in algorythms {
+            for step in algorythm.0 {
+                tx.send(step).unwrap();
+                thread::sleep(Duration::from_millis(200));
+            }
         }
     });
 
