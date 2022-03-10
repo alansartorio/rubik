@@ -97,9 +97,13 @@ mod layers {
 
 impl BoundCube {
     pub fn new<F: Facade>(facade: &F) -> BoundCube {
+        Self::from_cube(facade, Cube::solved())
+    }
+
+    pub fn from_cube<F: Facade>(facade: &F, cube: Cube) -> BoundCube {
         let mut new = BoundCube {
             graphic_cube: GraphicCube::new(facade),
-            cube: Cube::solved(),
+            cube,
         };
         new.update_colors();
         new

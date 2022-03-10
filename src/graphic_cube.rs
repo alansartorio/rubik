@@ -3,8 +3,9 @@ use std::{f32::consts::PI, ops::Mul};
 use cgmath::{perspective, Matrix4, Point3, Rad, SquareMatrix, Vector3};
 use glium::{
     backend::Facade,
+    implement_vertex,
     index::{NoIndices, PrimitiveType},
-    Frame, Program, Surface, VertexBuffer, uniform, implement_vertex,
+    uniform, Frame, Program, Surface, VertexBuffer,
 };
 
 use crate::cube::{self, Cube};
@@ -38,6 +39,7 @@ mod colors {
     pub static YELLOW: Color = [1.0, 1.0, 0.0];
     pub static WHITE: Color = [1.0, 1.0, 1.0];
     pub static ORANGE: Color = [1.0, 0.3, 0.0];
+    pub static BLACK: Color = [0.0, 0.0, 0.0];
 }
 
 impl GraphicCube {
@@ -163,13 +165,16 @@ impl GraphicCube {
     pub fn update_colors(&mut self, cube: &Cube) {
         let mut mapping = self.per_instance.map();
         for (attr, color) in Iterator::zip(mapping.iter_mut(), cube.flatten_stickers()) {
-            attr.color = match color {
-                cube::FaceId::Up => colors::RED,
-                cube::FaceId::Down => colors::ORANGE,
-                cube::FaceId::Right => colors::WHITE,
-                cube::FaceId::Left => colors::YELLOW,
-                cube::FaceId::Front => colors::BLUE,
-                cube::FaceId::Back => colors::GREEN,
+            attr.color = match color.0 {
+                Some(face) => match face {
+                    cube::FaceId::Up => colors::RED,
+                    cube::FaceId::Down => colors::ORANGE,
+                    cube::FaceId::Right => colors::WHITE,
+                    cube::FaceId::Left => colors::YELLOW,
+                    cube::FaceId::Front => colors::BLUE,
+                    cube::FaceId::Back => colors::GREEN,
+                },
+                None => colors::BLACK,
             };
         }
     }
@@ -192,10 +197,9 @@ impl GraphicCube {
     }
 
     pub fn tick(&mut self, dt: f32) {
-        self.animation_lerp = if self.animation_lerp > 0. {
-            self.animation_lerp - dt * 7.
-        } else {
-            0.
-        };
+        self.animation_lerp -= dt * 7.;
+        if self.animation_lerp < 0. {
+            self.animation_lerp = 0.;
+        }
     }
 }

@@ -1,15 +1,17 @@
+use bimap::BiMap;
+use enum_map::{enum_map, Enum, EnumMap};
 use rand::seq::SliceRandom;
 use std::char;
+use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::error::Error;
 use std::fmt::{Debug, Display};
+use std::iter::FromIterator;
 use std::ops::Neg;
 use std::str::FromStr;
 use std::{cell::RefCell, convert::TryInto, rc::Rc};
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
-
-use enum_map::{enum_map, Enum, EnumMap};
 
 #[derive(Enum)]
 enum Sides {
@@ -23,7 +25,10 @@ use Sides::*;
 #[derive(Debug, Clone)]
 pub struct FaceIdParseError;
 
-#[derive(Debug, Enum, EnumIter, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StickerType(pub Option<FaceId>);
+
+#[derive(Debug, Enum, EnumIter, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum FaceId {
     Up,
     Down,
@@ -33,21 +38,21 @@ pub enum FaceId {
     Back,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MiddleRotation {
     M,
     E,
     S,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CubeRotation {
     X,
     Y,
     Z,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Movement {
     Rotation(FaceId),
     DoubleRotation(FaceId),
@@ -55,7 +60,7 @@ pub enum Movement {
     CubeRotation(CubeRotation),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Step {
     pub movement: Movement,
     pub count: i8,
@@ -72,59 +77,84 @@ impl Neg for Step {
     }
 }
 
+lazy_static! {
+    static ref MAPPING: BiMap<&'static str, Step> = {
+        let mut m = BiMap::new();
+        m.insert("R", Step::new(Movement::Rotation(FaceId::Right), 1));
+        m.insert("R2", Step::new(Movement::Rotation(FaceId::Right), 2));
+        m.insert("R'", Step::new(Movement::Rotation(FaceId::Right), -1));
+        m.insert("L", Step::new(Movement::Rotation(FaceId::Left), 1));
+        m.insert("L2", Step::new(Movement::Rotation(FaceId::Left), 2));
+        m.insert("L'", Step::new(Movement::Rotation(FaceId::Left), -1));
+        m.insert("U", Step::new(Movement::Rotation(FaceId::Up), 1));
+        m.insert("U2", Step::new(Movement::Rotation(FaceId::Up), 2));
+        m.insert("U'", Step::new(Movement::Rotation(FaceId::Up), -1));
+        m.insert("D", Step::new(Movement::Rotation(FaceId::Down), 1));
+        m.insert("D2", Step::new(Movement::Rotation(FaceId::Down), 2));
+        m.insert("D'", Step::new(Movement::Rotation(FaceId::Down), -1));
+        m.insert("F", Step::new(Movement::Rotation(FaceId::Front), 1));
+        m.insert("F2", Step::new(Movement::Rotation(FaceId::Front), 2));
+        m.insert("F'", Step::new(Movement::Rotation(FaceId::Front), -1));
+        m.insert("B", Step::new(Movement::Rotation(FaceId::Back), 1));
+        m.insert("B2", Step::new(Movement::Rotation(FaceId::Back), 2));
+        m.insert("B'", Step::new(Movement::Rotation(FaceId::Back), -1));
+        m.insert("r", Step::new(Movement::DoubleRotation(FaceId::Right), 1));
+        m.insert("r'", Step::new(Movement::DoubleRotation(FaceId::Right), -1));
+        m.insert("l", Step::new(Movement::DoubleRotation(FaceId::Left), 1));
+        m.insert("l'", Step::new(Movement::DoubleRotation(FaceId::Left), -1));
+        m.insert("u", Step::new(Movement::DoubleRotation(FaceId::Up), 1));
+        m.insert("u'", Step::new(Movement::DoubleRotation(FaceId::Up), -1));
+        m.insert("d", Step::new(Movement::DoubleRotation(FaceId::Down), 1));
+        m.insert("d'", Step::new(Movement::DoubleRotation(FaceId::Down), -1));
+        m.insert("f", Step::new(Movement::DoubleRotation(FaceId::Front), 1));
+        m.insert("f'", Step::new(Movement::DoubleRotation(FaceId::Front), -1));
+        m.insert("b", Step::new(Movement::DoubleRotation(FaceId::Back), 1));
+        m.insert("b'", Step::new(Movement::DoubleRotation(FaceId::Back), -1));
+        m.insert(
+            "M",
+            Step::new(Movement::MiddleRotation(MiddleRotation::M), 1),
+        );
+        m.insert(
+            "M'",
+            Step::new(Movement::MiddleRotation(MiddleRotation::M), -1),
+        );
+        m.insert(
+            "E",
+            Step::new(Movement::MiddleRotation(MiddleRotation::E), 1),
+        );
+        m.insert(
+            "E'",
+            Step::new(Movement::MiddleRotation(MiddleRotation::E), -1),
+        );
+        m.insert(
+            "S",
+            Step::new(Movement::MiddleRotation(MiddleRotation::S), 1),
+        );
+        m.insert(
+            "S'",
+            Step::new(Movement::MiddleRotation(MiddleRotation::S), -1),
+        );
+        m.insert("x", Step::new(Movement::CubeRotation(CubeRotation::X), 1));
+        m.insert("x'", Step::new(Movement::CubeRotation(CubeRotation::X), -1));
+        m.insert("y", Step::new(Movement::CubeRotation(CubeRotation::Y), 1));
+        m.insert("y'", Step::new(Movement::CubeRotation(CubeRotation::Y), -1));
+        m.insert("z", Step::new(Movement::CubeRotation(CubeRotation::Z), 1));
+        m.insert("z'", Step::new(Movement::CubeRotation(CubeRotation::Z), -1));
+        m
+    };
+}
+
 impl FromStr for Step {
     type Err = Box<dyn Error>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "R" => Ok(Step::new(Movement::Rotation(FaceId::Right), 1)),
-            "R2" => Ok(Step::new(Movement::Rotation(FaceId::Right), 2)),
-            "R'" => Ok(Step::new(Movement::Rotation(FaceId::Right), -1)),
-            "L" => Ok(Step::new(Movement::Rotation(FaceId::Left), 1)),
-            "L2" => Ok(Step::new(Movement::Rotation(FaceId::Left), 2)),
-            "L'" => Ok(Step::new(Movement::Rotation(FaceId::Left), -1)),
-            "U" => Ok(Step::new(Movement::Rotation(FaceId::Up), 1)),
-            "U2" => Ok(Step::new(Movement::Rotation(FaceId::Up), 2)),
-            "U'" => Ok(Step::new(Movement::Rotation(FaceId::Up), -1)),
-            "D" => Ok(Step::new(Movement::Rotation(FaceId::Down), 1)),
-            "D2" => Ok(Step::new(Movement::Rotation(FaceId::Down), 2)),
-            "D'" => Ok(Step::new(Movement::Rotation(FaceId::Down), -1)),
-            "F" => Ok(Step::new(Movement::Rotation(FaceId::Front), 1)),
-            "F2" => Ok(Step::new(Movement::Rotation(FaceId::Front), 2)),
-            "F'" => Ok(Step::new(Movement::Rotation(FaceId::Front), -1)),
-            "B" => Ok(Step::new(Movement::Rotation(FaceId::Back), 1)),
-            "B2" => Ok(Step::new(Movement::Rotation(FaceId::Back), 2)),
-            "B'" => Ok(Step::new(Movement::Rotation(FaceId::Back), -1)),
+        MAPPING.get_by_left(s).map(|&m| m).ok_or("Invalid Step String".into())
+    }
+}
 
-            "r" => Ok(Step::new(Movement::DoubleRotation(FaceId::Right), 1)),
-            "r'" => Ok(Step::new(Movement::DoubleRotation(FaceId::Right), -1)),
-            "l" => Ok(Step::new(Movement::DoubleRotation(FaceId::Left), 1)),
-            "l'" => Ok(Step::new(Movement::DoubleRotation(FaceId::Left), -1)),
-            "u" => Ok(Step::new(Movement::DoubleRotation(FaceId::Up), 1)),
-            "u'" => Ok(Step::new(Movement::DoubleRotation(FaceId::Up), -1)),
-            "d" => Ok(Step::new(Movement::DoubleRotation(FaceId::Down), 1)),
-            "d'" => Ok(Step::new(Movement::DoubleRotation(FaceId::Down), -1)),
-            "f" => Ok(Step::new(Movement::DoubleRotation(FaceId::Front), 1)),
-            "f'" => Ok(Step::new(Movement::DoubleRotation(FaceId::Front), -1)),
-            "b" => Ok(Step::new(Movement::DoubleRotation(FaceId::Back), 1)),
-            "b'" => Ok(Step::new(Movement::DoubleRotation(FaceId::Back), -1)),
-
-            "M" => Ok(Step::new(Movement::MiddleRotation(MiddleRotation::M), 1)),
-            "M'" => Ok(Step::new(Movement::MiddleRotation(MiddleRotation::M), -1)),
-            "E" => Ok(Step::new(Movement::MiddleRotation(MiddleRotation::E), 1)),
-            "E'" => Ok(Step::new(Movement::MiddleRotation(MiddleRotation::E), -1)),
-            "S" => Ok(Step::new(Movement::MiddleRotation(MiddleRotation::S), 1)),
-            "S'" => Ok(Step::new(Movement::MiddleRotation(MiddleRotation::S), -1)),
-
-            "x" => Ok(Step::new(Movement::CubeRotation(CubeRotation::X), 1)),
-            "x'" => Ok(Step::new(Movement::CubeRotation(CubeRotation::X), -1)),
-            "y" => Ok(Step::new(Movement::CubeRotation(CubeRotation::Y), 1)),
-            "y'" => Ok(Step::new(Movement::CubeRotation(CubeRotation::Y), -1)),
-            "z" => Ok(Step::new(Movement::CubeRotation(CubeRotation::Z), 1)),
-            "z'" => Ok(Step::new(Movement::CubeRotation(CubeRotation::Z), -1)),
-
-            _ => Err("Invalid Step String".into()),
-        }
+impl ToString for Step {
+    fn to_string(&self) -> String {
+        (*MAPPING.get_by_right(self).unwrap()).to_owned()
     }
 }
 
@@ -137,9 +167,38 @@ impl Step {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Algorythm(pub Vec<Step>);
 
+impl ToString for Algorythm {
+    fn to_string(&self) -> String {
+        self.0.iter().map(ToString::to_string).collect::<Vec<_>>().join(" ")
+    }
+}
+
+impl Algorythm {
+    pub fn random(depth: u8) -> Algorythm {
+        let moves = [
+            FaceId::Up,
+            FaceId::Down,
+            FaceId::Right,
+            FaceId::Left,
+            FaceId::Front,
+            FaceId::Back,
+        ];
+
+        let mut steps = vec![];
+        let mut rng = rand::thread_rng();
+        for _ in 0..depth {
+            let choice = *moves.choose(&mut rng).unwrap();
+            
+            steps.push(Step::new(Movement::Rotation(choice), 1));
+        }
+
+        Algorythm(steps)
+    }
+}
+
 impl Neg for Algorythm {
     type Output = Self;
-    
+
     fn neg(self) -> Self::Output {
         Algorythm(self.0.iter().rev().cloned().map(Neg::neg).collect())
     }
@@ -161,30 +220,34 @@ fn normalize_rotation(rotation: i8) -> u8 {
     rotation.rem_euclid(4) as u8
 }
 
-impl Display for FaceId {
+impl Display for StickerType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let l = match self {
-            Self::Up => 'u',
-            Self::Down => 'd',
-            Self::Right => 'r',
-            Self::Left => 'l',
-            Self::Front => 'f',
-            Self::Back => 'b',
+            StickerType(Some(face)) => match face {
+                FaceId::Up => 'u',
+                FaceId::Down => 'd',
+                FaceId::Right => 'r',
+                FaceId::Left => 'l',
+                FaceId::Front => 'f',
+                FaceId::Back => 'b',
+            },
+            StickerType(None) => '0',
         };
         write!(f, "{}", l)
     }
 }
-impl TryFrom<char> for FaceId {
+impl TryFrom<char> for StickerType {
     type Error = FaceIdParseError;
 
     fn try_from(value: char) -> Result<Self, Self::Error> {
         match value {
-            'u' => Ok(FaceId::Up),
-            'd' => Ok(FaceId::Down),
-            'r' => Ok(FaceId::Right),
-            'l' => Ok(FaceId::Left),
-            'f' => Ok(FaceId::Front),
-            'b' => Ok(FaceId::Back),
+            'u' => Ok(StickerType(Some(FaceId::Up))),
+            'd' => Ok(StickerType(Some(FaceId::Down))),
+            'r' => Ok(StickerType(Some(FaceId::Right))),
+            'l' => Ok(StickerType(Some(FaceId::Left))),
+            'f' => Ok(StickerType(Some(FaceId::Front))),
+            'b' => Ok(StickerType(Some(FaceId::Back))),
+            '0' => Ok(StickerType(None)),
             _ => Err(FaceIdParseError),
         }
     }
@@ -192,10 +255,10 @@ impl TryFrom<char> for FaceId {
 
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub struct FaceData {
-    tiles: [[FaceId; 3]; 3],
+    tiles: [[StickerType; 3]; 3],
 }
 impl FaceData {
-    fn new(tiles: [[FaceId; 3]; 3]) -> FaceData {
+    fn new(tiles: [[StickerType; 3]; 3]) -> FaceData {
         FaceData { tiles }
     }
 
@@ -216,7 +279,7 @@ impl FaceData {
         self
     }
 
-    fn flatten_stickers(&self) -> [FaceId; 9] {
+    fn flatten_stickers(&self) -> [StickerType; 9] {
         let tiles = self.tiles;
         [
             tiles[0][0],
@@ -233,10 +296,10 @@ impl FaceData {
 
     fn is_solved(&self) -> bool {
         let stickers = self.flatten_stickers();
-        let mut iter = stickers.iter();
-        let sticker = *iter.next().unwrap();
+        let mut iter = stickers.iter().filter_map(|s| s.0);
+        let sticker = iter.next().unwrap();
 
-        iter.all(|s| *s == sticker)
+        iter.all(|s| s == sticker)
     }
 }
 impl FromStr for FaceData {
@@ -248,7 +311,7 @@ impl FromStr for FaceData {
                 .map(|row| {
                     row.trim()
                         .chars()
-                        .map(|c| FaceId::try_from(c).unwrap())
+                        .map(|c| StickerType::try_from(c).unwrap())
                         .collect::<Vec<_>>()
                         .try_into()
                         .unwrap()
@@ -312,7 +375,7 @@ impl FaceBorderView {
     }
 }
 impl FaceBorderView {
-    fn get(&self) -> [FaceId; 3] {
+    fn get(&self) -> [StickerType; 3] {
         //let face: FaceData = self.face.borrow().tiles;
         let tiles = RefCell::borrow(&self.face).tiles;
         match self.side {
@@ -322,7 +385,7 @@ impl FaceBorderView {
             Sides::Left => [tiles[2][0], tiles[1][0], tiles[0][0]],
         }
     }
-    fn set(&self, row: [FaceId; 3]) {
+    fn set(&self, row: [StickerType; 3]) {
         //let face: FaceData = self.face.borrow().tiles;
         let tiles = &mut RefCell::borrow_mut(&self.face).tiles;
         match self.side {
@@ -352,6 +415,14 @@ impl FaceBorderView {
 
 pub struct Cube {
     faces: EnumMap<FaceId, Face>,
+}
+
+impl Clone for Cube {
+    fn clone(&self) -> Self {
+        Self::new(enum_map! {
+            id => *RefCell::borrow(&self.faces[id].face_data)
+        })
+    }
 }
 
 impl Debug for Cube {
@@ -463,19 +534,140 @@ impl Cube {
         })
     }
 
+    pub fn find_corner(&self, corner: [FaceId; 3]) -> Option<[(FaceId, u8, u8); 3]> {
+        [
+            [
+                (FaceId::Front, 0u8, 0u8),
+                (FaceId::Up, 2, 0),
+                (FaceId::Left, 0, 2),
+            ],
+            [
+                (FaceId::Front, 0, 2),
+                (FaceId::Up, 2, 2),
+                (FaceId::Right, 0, 0),
+            ],
+            [
+                (FaceId::Front, 2, 2),
+                (FaceId::Down, 0, 2),
+                (FaceId::Right, 2, 0),
+            ],
+            [
+                (FaceId::Front, 2, 0),
+                (FaceId::Down, 0, 0),
+                (FaceId::Left, 2, 2),
+            ],
+            [
+                (FaceId::Back, 0, 0),
+                (FaceId::Up, 0, 2),
+                (FaceId::Right, 0, 2),
+            ],
+            [
+                (FaceId::Back, 0, 2),
+                (FaceId::Up, 0, 0),
+                (FaceId::Left, 0, 0),
+            ],
+            [
+                (FaceId::Back, 2, 2),
+                (FaceId::Down, 2, 0),
+                (FaceId::Left, 2, 0),
+            ],
+            [
+                (FaceId::Back, 2, 0),
+                (FaceId::Down, 2, 2),
+                (FaceId::Right, 2, 2),
+            ],
+        ]
+        .iter()
+        .cloned()
+        .find(|tiles| {
+            if let Some(tiles) = tiles
+                .iter()
+                .cloned()
+                .map(|(face, y, x)| {
+                    RefCell::borrow(&self.faces[face].face_data).tiles[y as usize][x as usize].0
+                })
+                .collect::<Option<Vec<FaceId>>>()
+            {
+                HashSet::<_>::from_iter(tiles) == HashSet::from_iter(corner)
+            } else {
+                false
+            }
+        })
+    }
+
+    pub fn find_edge(&self, edge: [FaceId; 2]) -> Option<[(FaceId, u8, u8); 2]> {
+        macro_rules! top {
+            ($face: ident) => {
+                (FaceId::$face, 0, 1)
+            };
+        }
+        macro_rules! bottom {
+            ($face: ident) => {
+                (FaceId::$face, 2, 1)
+            };
+        }
+        macro_rules! left {
+            ($face: ident) => {
+                (FaceId::$face, 1, 0)
+            };
+        }
+        macro_rules! right {
+            ($face: ident) => {
+                (FaceId::$face, 1, 2)
+            };
+        }
+        [
+            [top!(Back), top!(Up)],
+            [left!(Back), right!(Right)],
+            [right!(Back), left!(Left)],
+            [bottom!(Back), bottom!(Down)],
+            [top!(Front), bottom!(Up)],
+            [left!(Front), right!(Left)],
+            [right!(Front), left!(Right)],
+            [bottom!(Front), top!(Down)],
+            [right!(Up), top!(Right)],
+            [bottom!(Right), right!(Down)],
+            [left!(Down), bottom!(Left)],
+            [top!(Left), left!(Up)],
+        ]
+        .iter()
+        .cloned()
+        .find(|tiles| {
+            if let Some(tiles) = tiles
+                .iter()
+                .cloned()
+                .map(|(face, y, x)| {
+                    RefCell::borrow(&self.faces[face].face_data).tiles[y as usize][x as usize].0
+                })
+                .collect::<Option<Vec<FaceId>>>()
+            {
+                HashSet::<_>::from_iter(tiles) == HashSet::from_iter(edge)
+            } else {
+                false
+            }
+        })
+    }
+
+    pub fn hide_sticker(&self, face: FaceId, y: u8, x: u8) {
+        let mut face = RefCell::borrow_mut(&self.faces[face].face_data);
+        face.tiles[y as usize][x as usize] = StickerType(None);
+    }
+
     pub fn solve(&self) {
         for face in self.faces.values() {
             let mut face = RefCell::borrow_mut(&face.face_data);
-            let center = face.tiles[1][1];
-            face.tiles[0][0] = center;
-            face.tiles[0][1] = center;
-            face.tiles[0][2] = center;
-            face.tiles[1][0] = center;
-            face.tiles[1][1] = center;
-            face.tiles[1][2] = center;
-            face.tiles[2][0] = center;
-            face.tiles[2][1] = center;
-            face.tiles[2][2] = center;
+            if face.tiles[1][1].0.is_some() {
+                let center = face.tiles[1][1];
+                face.tiles[0][0] = center;
+                face.tiles[0][1] = center;
+                face.tiles[0][2] = center;
+                face.tiles[1][0] = center;
+                face.tiles[1][1] = center;
+                face.tiles[1][2] = center;
+                face.tiles[2][0] = center;
+                face.tiles[2][1] = center;
+                face.tiles[2][2] = center;
+            }
         }
     }
 
@@ -492,21 +684,12 @@ impl Cube {
         )
     }
 
-    pub fn scramble(&self) {
-        let moves = [
-            FaceId::Up,
-            FaceId::Down,
-            FaceId::Right,
-            FaceId::Left,
-            FaceId::Front,
-            FaceId::Back,
-        ];
+    pub fn scramble_count(&self, move_count: u8) {
+        self.apply_algorythm(&Algorythm::random(move_count));
+    }
 
-        let mut rng = rand::thread_rng();
-        for _ in 0..100 {
-            let choice = *moves.choose(&mut rng).unwrap();
-            self.rotate_face(choice, 1);
-        }
+    pub fn scramble(&self) {
+        self.scramble_count(100);
     }
 
     pub fn get_face(&self, face: FaceId) -> FaceData {
@@ -653,7 +836,7 @@ impl Cube {
         }
     }
 
-    pub fn flatten_stickers(&self) -> Vec<FaceId> {
+    pub fn flatten_stickers(&self) -> Vec<StickerType> {
         [
             FaceId::Up,
             FaceId::Down,
@@ -704,7 +887,10 @@ mod tests {
 
     #[test]
     fn algorythm_and_reverse() {
-        let algorythm: Algorythm = "B2 D' B L' F2 U D' L' D R2 L' F2 B2 L2 D F' L2 U' B2 F D2 R D L2 U".parse().unwrap();
+        let algorythm: Algorythm =
+            "B2 D' B L' F2 U D' L' D R2 L' F2 B2 L2 D F' L2 U' B2 F D2 R D L2 U"
+                .parse()
+                .unwrap();
 
         let reversed = -algorythm.clone();
 
@@ -715,5 +901,59 @@ mod tests {
 
         cube.apply_algorythm(&reversed);
         assert!(cube.is_solved());
+    }
+
+    #[test]
+    fn find_corner() {
+        let cube = Cube::solved();
+
+        let corner = cube.find_corner([FaceId::Up, FaceId::Right, FaceId::Front]);
+        assert!(corner.is_some());
+        let corner = corner.unwrap();
+        assert_eq!(
+            HashSet::<_>::from_iter(corner),
+            HashSet::from_iter([
+                (FaceId::Up, 2, 2),
+                (FaceId::Front, 0, 2),
+                (FaceId::Right, 0, 0)
+            ])
+        );
+
+        cube.apply_step(Step::new(Movement::Rotation(FaceId::Right), 1));
+
+        let corner = cube.find_corner([FaceId::Up, FaceId::Right, FaceId::Front]);
+        assert!(corner.is_some());
+        let corner = corner.unwrap();
+        assert_eq!(
+            HashSet::<_>::from_iter(corner),
+            HashSet::from_iter([
+                (FaceId::Up, 0, 2),
+                (FaceId::Back, 0, 0),
+                (FaceId::Right, 0, 2)
+            ])
+        );
+    }
+
+    #[test]
+    fn find_edge() {
+        let cube = Cube::solved();
+
+        let edge = cube.find_edge([FaceId::Up, FaceId::Right]);
+        assert!(edge.is_some());
+        let edge = edge.unwrap();
+        assert_eq!(
+            HashSet::<_>::from_iter(edge),
+            HashSet::from_iter([(FaceId::Up, 1, 2), (FaceId::Right, 0, 1)])
+        );
+
+        cube.apply_step(Step::new(Movement::Rotation(FaceId::Right), 1));
+
+        let edge = cube.find_edge([FaceId::Up, FaceId::Right]);
+        assert!(edge.is_some());
+        let edge = edge.unwrap();
+        assert_eq!(
+            HashSet::<_>::from_iter(edge),
+            HashSet::from_iter([(FaceId::Back, 1, 0), (FaceId::Right, 1, 2)])
+        );
     }
 }
