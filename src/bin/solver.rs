@@ -6,7 +6,7 @@ use std::{
 use lazy_static::{__Deref, lazy_static};
 use rubik::{
     cube::{
-        Cube,
+        Algorythm, Cube,
         FaceId::{self, *},
     },
     solver::solve,
@@ -35,28 +35,16 @@ const EDGES: [Piece; 12] = [
     Piece::Edge(Up, Back),
     Piece::Edge(Up, Left),
     Piece::Edge(Up, Front),
-    Piece::Edge(Down, Right),
-    Piece::Edge(Down, Back),
-    Piece::Edge(Down, Left),
-    Piece::Edge(Down, Front),
     Piece::Edge(Front, Right),
     Piece::Edge(Right, Back),
     Piece::Edge(Back, Left),
     Piece::Edge(Left, Front),
+    Piece::Edge(Down, Right),
+    Piece::Edge(Down, Back),
+    Piece::Edge(Down, Left),
+    Piece::Edge(Down, Front),
 ];
 
-lazy_static! {
-    static ref STEPS: [Vec<Piece>; 8] = [
-        vec![EDGES[0]],
-        vec![EDGES[1]],
-        vec![EDGES[2]],
-        vec![EDGES[3]],
-        vec![CORNERS[0]],
-        vec![CORNERS[1]],
-        vec![CORNERS[2]],
-        vec![CORNERS[3]],
-    ];
-}
 
 fn whitelist(cube: &Cube<3>, pieces: Vec<Piece>) -> Cube<3> {
     let shown_tiles = pieces
@@ -91,19 +79,60 @@ fn whitelist(cube: &Cube<3>, pieces: Vec<Piece>) -> Cube<3> {
     cube
 }
 
+enum SolveStep<'a> {
+    Bruteforce(Vec<Piece>, &'a Vec<Algorythm>),
+    Fixed(Algorythm),
+}
+
 fn main() {
+    let basic_moves: Vec<Algorythm> = "R R' L L' F F' U U' D D' B B'"
+        .parse::<Algorythm>()
+        .unwrap()
+        .0
+        .iter()
+        .map(|&step| Algorythm(vec![step]))
+        .collect();
+
+    //let insert_corner: Algorythm = "R U R'".parse().unwrap();
+    //let : Algorythm = "R U R'".parse().unwrap();
+
+    let steps: Vec<SolveStep> = vec![
+        SolveStep::Bruteforce(vec![EDGES[0]], &basic_moves),
+        SolveStep::Bruteforce(vec![EDGES[1]], &basic_moves),
+        SolveStep::Bruteforce(vec![EDGES[2]], &basic_moves),
+        SolveStep::Bruteforce(vec![EDGES[3]], &basic_moves),
+        SolveStep::Bruteforce(vec![EDGES[4]], &basic_moves),
+        SolveStep::Bruteforce(vec![EDGES[5]], &basic_moves),
+        SolveStep::Bruteforce(vec![EDGES[6]], &basic_moves),
+        SolveStep::Bruteforce(vec![EDGES[7]], &basic_moves),
+        SolveStep::Bruteforce(vec![EDGES[8]], &basic_moves),
+        SolveStep::Bruteforce(vec![EDGES[9]], &basic_moves),
+        SolveStep::Bruteforce(vec![EDGES[10]], &basic_moves),
+        SolveStep::Bruteforce(vec![EDGES[11]], &basic_moves),
+        //SolveStep::Fixed("z z".parse().unwrap()),
+        //SolveStep::Bruteforce(vec![CORNERS[0], EDGES[4]], &basic_moves),
+        //SolveStep::Bruteforce(vec![CORNERS[1], EDGES[7]], &basic_moves),
+        //SolveStep::Bruteforce(vec![CORNERS[2], EDGES[5]], &basic_moves),
+        //SolveStep::Bruteforce(vec![CORNERS[3], EDGES[6]], &basic_moves),
+    ];
+
     let mut input_string = String::new();
     io::stdin().read_to_string(&mut input_string).unwrap();
     let cube: Cube<3> = input_string.parse().unwrap();
 
     let mut acum_step: Vec<Piece> = vec![];
 
-    for step in STEPS.deref() {
-        acum_step.append(&mut step.clone());
-        let clone = whitelist(&cube, acum_step.clone());
-        let step_solution = solve(&clone);
+    for solve_step in steps {
+        let algorythm = match solve_step {
+            SolveStep::Bruteforce(tiles_to_solve, allowed_moves) => {
+                acum_step.append(&mut tiles_to_solve.clone());
+                let clone = whitelist(&cube, acum_step.clone());
+                solve(&clone, &allowed_moves)
+            },
+            SolveStep::Fixed(alg) => alg
+        };
 
-        cube.apply_algorythm(&step_solution);
-        println!("{}", step_solution.to_string());
+        cube.apply_algorythm(&algorythm);
+        println!("{}", algorythm.to_string());
     }
 }
