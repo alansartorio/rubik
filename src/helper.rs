@@ -1,7 +1,7 @@
 use glium::glutin;
-use glium::glutin::event_loop::EventLoop;
 use glium::glutin::event::Event;
 use glium::glutin::event_loop::ControlFlow;
+use glium::glutin::event_loop::EventLoop;
 
 pub enum Action {
     Stop,

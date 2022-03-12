@@ -7,7 +7,7 @@ use std::{
 
 use glium::{glutin, Surface};
 use rubik::{
-    bound_cube::BoundCube,
+    bound_cube::{BoundCube, BoundCubeTrait},
     cube::{Cube, Step},
     helper,
 };
