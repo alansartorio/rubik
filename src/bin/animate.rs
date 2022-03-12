@@ -8,7 +8,7 @@ use std::{
 use glium::{glutin, Surface};
 use rubik::{
     bound_cube::BoundCube,
-    cube::{Algorythm, Cube, Step},
+    cube::{Cube, Step},
     helper,
 };
 use stopwatch::Stopwatch;

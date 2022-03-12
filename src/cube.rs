@@ -337,7 +337,7 @@ impl TryFrom<char> for StickerType {
             'f' => Ok(StickerType(Some(FaceId::Front))),
             'b' => Ok(StickerType(Some(FaceId::Back))),
             '0' => Ok(StickerType(None)),
-            _ => Err("Could not parse sticker".into()),
+            c => Err(("Could not parse sticker ".to_owned() + &c.to_string()).into()),
         }
     }
 }
@@ -387,13 +387,13 @@ impl<const N: usize> FromStr for FaceData<N> {
                         .chars()
                         .map(|c| StickerType::try_from(c))
                         .collect::<Result<Vec<_>, _>>()
-                        .map_err(|_| "")?
+                        .map_err::<Box<dyn Error>, _>(|e| e.to_string().into())?
                         .try_into()
-                        .map_err(|_| "")
+                        .map_err::<Box<dyn Error>, _>(|_| "Wrong row width".into())
                 })
                 .collect::<Result<Vec<_>, _>>()?
                 .try_into()
-                .map_err(|_| "")?,
+                .map_err(|_| "Wrong row count")?,
         ))
     }
 }
@@ -532,7 +532,7 @@ impl<const N: usize> FromStr for Cube<N> {
             .split("\n\n")
             .map(|face| face.parse::<FaceData<N>>())
             .collect::<Result<Vec<_>, _>>()
-            .map_err(|_| "Error parsing face")?
+            .map_err(|e| "Error parsing face: ".to_owned() + &e.to_string())?
             .try_into()
             .map_err(|_| "Wrong face count")?;
 

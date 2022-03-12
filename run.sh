@@ -4,6 +4,6 @@
 	scrambled=`cargo run --bin scrambler`
 	printf "$scrambled\n"
 	echo "==="
-	cargo run --bin solver <<< "$scrambled"
-) | tee >(stdbuf -oL tr '\ ' '\n' | awk 'NF' | cargo run --bin animate)
+	cargo run --bin solver <<< "$scrambled" | stdbuf -oL tr '\ ' '\n' | stdbuf -oL awk 'NF'
+) | tee >(cargo run --bin animate)
 
