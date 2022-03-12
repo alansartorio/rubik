@@ -2,11 +2,11 @@
 extern crate glium;
 extern crate glium_glyph;
 
+use core::panic;
 use std::env;
 
-
-use rubik::cube::{Movement, Step};
-use rubik::bound_cube::BoundCube;
+use glium::backend::Facade;
+use glium::Display;
 use glium_glyph::{
     glyph_brush::{
         rusttype::{self, Font},
@@ -14,6 +14,8 @@ use glium_glyph::{
     },
     GlyphBrush,
 };
+use rubik::bound_cube::{BoundCube, BoundCubeTrait};
+use rubik::cube::{Movement, Step};
 
 use stopwatch::Stopwatch;
 
@@ -23,6 +25,27 @@ use glium::{glutin, Surface};
 use rubik::helper;
 
 use rubik::helper::Action;
+
+#[rustfmt::skip]
+fn create_cube<F: Facade>(facade: &F, cube_size: usize) -> Box<dyn BoundCubeTrait> {
+    macro_rules! impl_cube {
+        ($( $size:expr ),*) => {
+            match cube_size {
+                $($size => Box::new(BoundCube::<$size>::new(facade)),)+
+                _ => panic!()
+            }
+        };
+    }
+
+    impl_cube!(
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 
+        10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+        20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+        30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
+        40, 41, 42, 43, 44, 45, 46, 47, 48, 49,
+        50, 51, 52, 53, 54, 55, 56, 57, 58, 59
+    )
+}
 
 fn main() {
     let event_loop = glutin::event_loop::EventLoop::new();
@@ -37,7 +60,8 @@ fn main() {
     let font = Font::from_bytes(font_data).unwrap();
     let mut glyph_brush = GlyphBrush::new(&display, [font]);
 
-    let mut cube = BoundCube::new(&display);
+    let mut cube_size = 3;
+    let mut cube = create_cube(&display, cube_size);
     cube.scramble();
 
     let mut timer = Stopwatch::new();
@@ -45,50 +69,49 @@ fn main() {
 
     let mut delta_times: Vec<f32> = vec![];
 
-    const RUBIK_SIZE: usize = 3;
-
-    let mut draw = move |cube: &BoundCube<RUBIK_SIZE>, timer: &Stopwatch, dt: f32| {
-        let (width, height) = display.get_framebuffer_dimensions();
-
-        glyph_brush.queue(Section {
-            text: format!("{:0.2}", timer.elapsed().as_secs_f32()).as_str(),
-            bounds: (width as f32, height as f32 / 2.0),
-            screen_position: (50., 50.),
-            color: [1., 1., 1., 1.],
-            scale: rusttype::Scale::uniform(60.),
-            ..Section::default()
-        });
-
-        if env::var("SHOW_FPS").map(|var| var == "1").unwrap_or(false) {
-            delta_times.push(dt);
-            if delta_times.len() > 10 {
-                delta_times.remove(0);
-            }
-            let mean_delta = delta_times.iter().sum::<f32>() / delta_times.len() as f32;
+    let mut draw =
+        move |cube: &Box<dyn BoundCubeTrait>, timer: &Stopwatch, display: &Display, dt: f32| {
+            let (width, height) = display.get_framebuffer_dimensions();
 
             glyph_brush.queue(Section {
-                text: format!("{:0.2}", 1. / mean_delta).as_str(),
-                bounds: (200., height as f32 / 2.0),
-                screen_position: (width as f32 - 50., 50.),
+                text: format!("{:0.2}", timer.elapsed().as_secs_f32()).as_str(),
+                bounds: (width as f32, height as f32 / 2.0),
+                screen_position: (50., 50.),
                 color: [1., 1., 1., 1.],
                 scale: rusttype::Scale::uniform(60.),
-                layout: Layout::SingleLine {
-                    line_breaker: BuiltInLineBreaker::default(),
-                    h_align: HorizontalAlign::Right,
-                    v_align: VerticalAlign::Top,
-                },
                 ..Section::default()
             });
-        }
 
-        let mut target = display.draw();
+            if env::var("SHOW_FPS").map(|var| var == "1").unwrap_or(false) {
+                delta_times.push(dt);
+                if delta_times.len() > 10 {
+                    delta_times.remove(0);
+                }
+                let mean_delta = delta_times.iter().sum::<f32>() / delta_times.len() as f32;
 
-        target.clear_color_and_depth((0.0, 0.0, 0.0, 0.0), 1.0);
-        glyph_brush.draw_queued(&display, &mut target);
+                glyph_brush.queue(Section {
+                    text: format!("{:0.2}", 1. / mean_delta).as_str(),
+                    bounds: (200., height as f32 / 2.0),
+                    screen_position: (width as f32 - 50., 50.),
+                    color: [1., 1., 1., 1.],
+                    scale: rusttype::Scale::uniform(60.),
+                    layout: Layout::SingleLine {
+                        line_breaker: BuiltInLineBreaker::default(),
+                        h_align: HorizontalAlign::Right,
+                        v_align: VerticalAlign::Top,
+                    },
+                    ..Section::default()
+                });
+            }
 
-        cube.draw(&mut target);
-        target.finish().unwrap();
-    };
+            let mut target = display.draw();
+
+            target.clear_color_and_depth((0.0, 0.0, 0.0, 0.0), 1.0);
+            glyph_brush.draw_queued(display, &mut target);
+
+            cube.draw(&mut target);
+            target.finish().unwrap();
+        };
 
     let mut frame_timer = Stopwatch::new();
 
@@ -98,7 +121,7 @@ fn main() {
 
         cube.tick(dt);
 
-        draw(&cube, &timer, dt);
+        draw(&cube, &timer, &display, dt);
 
         let mut action = Action::Continue;
         for event in events {
@@ -147,6 +170,20 @@ fn main() {
                                         }
                                         VirtualKeyCode::Back => {
                                             cube.solve();
+                                            timer.reset();
+                                            timer_enabled = false;
+                                            None
+                                        }
+                                        VirtualKeyCode::NumpadSubtract
+                                        | VirtualKeyCode::NumpadAdd => {
+                                            cube_size = (cube_size as i8
+                                                + match keycode {
+                                                    VirtualKeyCode::NumpadSubtract => -1i8,
+                                                    VirtualKeyCode::NumpadAdd => 1i8,
+                                                    _ => unreachable!(),
+                                                })
+                                                as usize;
+                                            cube = create_cube(&display, cube_size);
                                             timer.reset();
                                             timer_enabled = false;
                                             None

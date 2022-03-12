@@ -46,7 +46,7 @@ const EDGES: [Piece; 12] = [
 ];
 
 lazy_static! {
-    static ref STEPS: [Vec<Piece>; 8] = [
+    static ref STEPS: Vec<Vec<Piece>> = vec![
         vec![EDGES[0]],
         vec![EDGES[1]],
         vec![EDGES[2]],
@@ -55,6 +55,10 @@ lazy_static! {
         vec![CORNERS[1]],
         vec![CORNERS[2]],
         vec![CORNERS[3]],
+        vec![EDGES[8]],
+        vec![EDGES[9]],
+        vec![EDGES[10]],
+        vec![EDGES[11]],
     ];
 }
 

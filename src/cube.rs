@@ -88,16 +88,24 @@ fn transform_movement<const N: usize>(mov: Movement) -> NewMovement<N> {
         a
     };
     let two_start = {
-        let mut a = [false; N];
-        a[0] = true;
-        a[1] = true;
-        a
+        if N == 1 {
+            [true; N]
+        } else {
+            let mut a = [false; N];
+            a[0] = true;
+            a[1] = true;
+            a
+        }
     };
     let two_end = {
-        let mut a = [false; N];
-        a[N - 1] = true;
-        a[N - 2] = true;
-        a
+        if N == 1 {
+            [true; N]
+        } else {
+            let mut a = [false; N];
+            a[N - 1] = true;
+            a[N - 2] = true;
+            a
+        }
     };
     let all = [true; N];
 
@@ -680,10 +688,10 @@ impl<const N: usize> Cube<N> {
                 FaceId::Left | FaceId::Back | FaceId::Down => -1,
                 _ => 1,
             },
+            Movement::MiddleRotation(_) => -1,
             _ => 1,
         };
         let count = step.count * invert_count;
-
 
         let face = match movement.axis {
             Axis::Y => FaceId::Up,

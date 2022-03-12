@@ -30,6 +30,22 @@ mod layers {
     pub const Z: [FaceLayers; 6] = [TOP, BOTTOM, RIGHT, LEFT, ZERO, MAX];
 }
 
+pub trait BoundCubeTrait {
+    fn is_solved(&self) -> bool;
+
+    fn scramble(&mut self);
+
+    fn solve(&mut self);
+
+    fn tick(&mut self, dt: f32);
+
+    fn draw(&self, target: &mut Frame);
+
+    fn apply_step(&mut self, step: Step);
+
+    fn apply_algorythm_unanimated(&mut self, algorythm: &Algorythm);
+}
+
 impl<const N: usize> BoundCube<N> {
     pub fn new<F: Facade>(facade: &F) -> BoundCube<N> {
         Self::from_cube(facade, Cube::solved())
@@ -44,33 +60,35 @@ impl<const N: usize> BoundCube<N> {
         new
     }
 
-    pub fn is_solved(&self) -> bool {
-        self.cube.is_solved()
-    }
-
     fn update_colors(&mut self) {
         self.graphic_cube.update_colors(&self.cube);
     }
+}
 
-    pub fn scramble(&mut self) {
+impl<const N: usize> BoundCubeTrait for BoundCube<N> {
+    fn is_solved(&self) -> bool {
+        self.cube.is_solved()
+    }
+
+    fn scramble(&mut self) {
         self.cube.scramble();
         self.update_colors();
     }
 
-    pub fn solve(&mut self) {
+    fn solve(&mut self) {
         self.cube.solve();
         self.update_colors();
     }
 
-    pub fn tick(&mut self, dt: f32) {
+    fn tick(&mut self, dt: f32) {
         self.graphic_cube.tick(dt);
     }
 
-    pub fn draw(&self, target: &mut Frame) {
+    fn draw(&self, target: &mut Frame) {
         self.graphic_cube.draw(target);
     }
 
-    pub fn apply_step(&mut self, step: Step) {
+    fn apply_step(&mut self, step: Step) {
         let start = {
             let mut a = [false; N];
             a[0] = true;
@@ -87,16 +105,24 @@ impl<const N: usize> BoundCube<N> {
             a
         };
         let two_start = {
-            let mut a = [false; N];
-            a[0] = true;
-            a[1] = true;
-            a
+            if N == 1 {
+                [true; N]
+            } else {
+                let mut a = [false; N];
+                a[0] = true;
+                a[1] = true;
+                a
+            }
         };
         let two_end = {
-            let mut a = [false; N];
-            a[N - 1] = true;
-            a[N - 2] = true;
-            a
+            if N == 1 {
+                [true; N]
+            } else {
+                let mut a = [false; N];
+                a[N - 1] = true;
+                a[N - 2] = true;
+                a
+            }
         };
         let all = [true; N];
         let affected_layers = match step.movement {
@@ -149,7 +175,6 @@ impl<const N: usize> BoundCube<N> {
         self.graphic_cube.update_rotations(
             |t| {
                 affected_layers[{
-                    let t = t as usize;
                     let f = t / (N * N);
                     let fi = t % (N * N);
                     let y = fi / N;
@@ -168,7 +193,7 @@ impl<const N: usize> BoundCube<N> {
         );
     }
 
-    pub fn apply_algorythm_unanimated(&mut self, algorythm: &Algorythm) {
+    fn apply_algorythm_unanimated(&mut self, algorythm: &Algorythm) {
         self.cube.apply_algorythm(algorythm);
         self.update_colors();
     }

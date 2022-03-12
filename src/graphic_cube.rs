@@ -46,7 +46,7 @@ impl<const N: usize> GraphicCube<N> {
     pub fn new<F: Facade>(facade: &F) -> GraphicCube<N> {
         GraphicCube {
             view: Matrix4::look_at_rh(
-                Point3::new(0., 1., -1.),
+                Point3::new(0., 0.25 * (N as f32), -0.25 * (N as f32)),
                 Point3::new(0., 0., 0.),
                 Vector3::new(0., 1., 0.),
             )
@@ -177,11 +177,11 @@ impl<const N: usize> GraphicCube<N> {
         }
     }
 
-    pub fn update_rotations<F: Fn(u8) -> bool>(&mut self, marked: F, rot: Vector3<i8>) {
+    pub fn update_rotations<F: Fn(usize) -> bool>(&mut self, marked: F, rot: Vector3<i8>) {
         let mut mapping = self.per_instance.map();
 
         for (i, attr) in Iterator::enumerate(mapping.iter_mut()) {
-            if marked(i as u8) {
+            if marked(i) {
                 let vec: [i8; 3] = rot.into();
                 attr.rotation_from = vec.map(|v| v as f32 * PI / 2.).into();
             } else {
