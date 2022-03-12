@@ -45,7 +45,9 @@ fn main() {
 
     let mut delta_times: Vec<f32> = vec![];
 
-    let mut draw = move |cube: &BoundCube, timer: &Stopwatch, dt: f32| {
+    const RUBIK_SIZE: usize = 3;
+
+    let mut draw = move |cube: &BoundCube<RUBIK_SIZE>, timer: &Stopwatch, dt: f32| {
         let (width, height) = display.get_framebuffer_dimensions();
 
         glyph_brush.queue(Section {

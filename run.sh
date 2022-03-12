@@ -5,5 +5,5 @@
 	printf "$scrambled\n"
 	echo "==="
 	cargo run --bin solver <<< "$scrambled"
-) | tee >(cargo run --bin animate)
+) | tee >(stdbuf -oL tr '\ ' '\n' | cargo run --bin animate)
 

@@ -2,105 +2,40 @@ use cgmath::Vector3;
 use glium::{backend::Facade, Frame};
 
 use crate::{
-    cube::{Cube, CubeRotation, FaceId::*, MiddleRotation, Movement, Step, Algorythm},
+    cube::{Algorythm, Cube, CubeRotation, FaceId::*, MiddleRotation, Movement, Step},
     graphic_cube::GraphicCube,
 };
 
-pub struct BoundCube {
-    cube: Cube,
-    graphic_cube: GraphicCube,
+pub struct BoundCube<const N: usize> {
+    cube: Cube<N>,
+    graphic_cube: GraphicCube<N>,
+}
+
+pub enum FaceLayers {
+    ZERO,
+    MAX,
+    TOP,
+    BOTTOM,
+    RIGHT,
+    LEFT,
 }
 
 mod layers {
+    use super::FaceLayers::{self, *};
 
-    #[rustfmt::skip]
-    pub const X: [u8; 3 * 3 * 6] = [
-        2, 1, 0, 
-        2, 1, 0, 
-        2, 1, 0,
+    pub const X: [FaceLayers; 6] = [LEFT, LEFT, ZERO, MAX, LEFT, RIGHT];
 
-        2, 1, 0,
-        2, 1, 0,
-        2, 1, 0,
+    pub const Y: [FaceLayers; 6] = [ZERO, MAX, BOTTOM, BOTTOM, BOTTOM, BOTTOM];
 
-        0, 0, 0,
-        0, 0, 0,
-        0, 0, 0,
-
-        2, 2, 2,
-        2, 2, 2,
-        2, 2, 2,
-
-        2, 1, 0,
-        2, 1, 0,
-        2, 1, 0,
-
-        0, 1, 2,
-        0, 1, 2,
-        0, 1, 2,
-    ];
-
-    #[rustfmt::skip]
-    pub const Y: [u8; 3 * 3 * 6] = [
-        0, 0, 0,
-        0, 0, 0,
-        0, 0, 0,
-
-        2, 2, 2,
-        2, 2, 2,
-        2, 2, 2,
-
-        0, 0, 0,
-        1, 1, 1,
-        2, 2, 2,
-
-        0, 0, 0,
-        1, 1, 1,
-        2, 2, 2,
-
-        0, 0, 0,
-        1, 1, 1,
-        2, 2, 2,
-
-        0, 0, 0,
-        1, 1, 1,
-        2, 2, 2,
-    ];
-
-    #[rustfmt::skip]
-    pub const Z: [u8; 3 * 3 * 6] = [
-        2, 2, 2,
-        1, 1, 1,
-        0, 0, 0,
-
-        0, 0, 0,
-        1, 1, 1,
-        2, 2, 2,
-        
-        0, 1, 2,
-        0, 1, 2,
-        0, 1, 2,
-
-        2, 1, 0,
-        2, 1, 0,
-        2, 1, 0,
-
-        0, 0, 0,
-        0, 0, 0,
-        0, 0, 0,
-
-        2, 2, 2,
-        2, 2, 2,
-        2, 2, 2,
-    ];
+    pub const Z: [FaceLayers; 6] = [TOP, BOTTOM, RIGHT, LEFT, ZERO, MAX];
 }
 
-impl BoundCube {
-    pub fn new<F: Facade>(facade: &F) -> BoundCube {
+impl<const N: usize> BoundCube<N> {
+    pub fn new<F: Facade>(facade: &F) -> BoundCube<N> {
         Self::from_cube(facade, Cube::solved())
     }
 
-    pub fn from_cube<F: Facade>(facade: &F, cube: Cube) -> BoundCube {
+    pub fn from_cube<F: Facade>(facade: &F, cube: Cube<N>) -> BoundCube<N> {
         let mut new = BoundCube {
             graphic_cube: GraphicCube::new(facade),
             cube,
@@ -136,20 +71,45 @@ impl BoundCube {
     }
 
     pub fn apply_step(&mut self, step: Step) {
+        let start = {
+            let mut a = [false; N];
+            a[0] = true;
+            a
+        };
+        let middle = {
+            let mut a = [false; N];
+            a[N / 2] = true;
+            a
+        };
+        let end = {
+            let mut a = [false; N];
+            a[N - 1] = true;
+            a
+        };
+        let two_start = {
+            let mut a = [false; N];
+            a[0] = true;
+            a[1] = true;
+            a
+        };
+        let two_end = {
+            let mut a = [false; N];
+            a[N - 1] = true;
+            a[N - 2] = true;
+            a
+        };
+        let all = [true; N];
         let affected_layers = match step.movement {
-            Movement::CubeRotation(_) => vec![0, 1, 2],
-            Movement::Rotation(face) => vec![match face {
-                Right | Up | Front => 0,
-                Left | Down | Back => 2,
-            }],
-            Movement::DoubleRotation(face) => vec![
-                match face {
-                    Right | Up | Front => 0,
-                    Left | Down | Back => 2,
-                },
-                1,
-            ],
-            Movement::MiddleRotation(_) => vec![1],
+            Movement::CubeRotation(_) => all,
+            Movement::Rotation(face) => match face {
+                Right | Up | Front => start,
+                Left | Down | Back => end,
+            },
+            Movement::DoubleRotation(face) => match face {
+                Right | Up | Front => two_start,
+                Left | Down | Back => two_end,
+            },
+            Movement::MiddleRotation(_) => middle,
         };
         let x: (Vector3<i8>, _) = (Vector3::unit_x(), &layers::X);
         let y: (Vector3<i8>, _) = (-Vector3::unit_y(), &layers::Y);
@@ -187,7 +147,23 @@ impl BoundCube {
 
         self.graphic_cube.update_colors(&self.cube);
         self.graphic_cube.update_rotations(
-            |t| affected_layers.contains(&layer_direction[t as usize]),
+            |t| {
+                affected_layers[{
+                    let t = t as usize;
+                    let f = t / (N * N);
+                    let fi = t % (N * N);
+                    let y = fi / N;
+                    let x = fi % N;
+                    match layer_direction[f] {
+                        FaceLayers::MAX => N - 1,
+                        FaceLayers::ZERO => 0,
+                        FaceLayers::RIGHT => x,
+                        FaceLayers::LEFT => N - 1 - x,
+                        FaceLayers::BOTTOM => y,
+                        FaceLayers::TOP => N - 1 - y,
+                    }
+                }]
+            },
             -rotation,
         );
     }

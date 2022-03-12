@@ -3,7 +3,7 @@ use std::{
     io::{self, Read},
 };
 
-use lazy_static::{__Deref, lazy_static};
+use lazy_static::{lazy_static, __Deref};
 use rubik::{
     cube::{
         Cube,
@@ -58,7 +58,7 @@ lazy_static! {
     ];
 }
 
-fn whitelist(cube: &Cube, pieces: Vec<Piece>) -> Cube {
+fn whitelist(cube: &Cube<3>, pieces: Vec<Piece>) -> Cube<3> {
     let shown_tiles = pieces
         .iter()
         .cloned()
@@ -94,11 +94,7 @@ fn whitelist(cube: &Cube, pieces: Vec<Piece>) -> Cube {
 fn main() {
     let mut input_string = String::new();
     io::stdin().read_to_string(&mut input_string).unwrap();
-    let cube: Cube = input_string.parse().unwrap();
-    //let cube = Cube::solved();
-    //let scramble = Algorythm::random(20);
-    //println!("{}", scramble.to_string());
-    //cube.apply_algorythm(&scramble);
+    let cube: Cube<3> = input_string.parse().unwrap();
 
     let mut acum_step: Vec<Piece> = vec![];
 

@@ -22,7 +22,7 @@ struct Vertex {
     position: [f32; 2],
 }
 
-pub struct GraphicCube {
+pub struct GraphicCube<const N: usize> {
     view: [[f32; 4]; 4],
     program: Program,
     per_instance: VertexBuffer<Attr>,
@@ -42,8 +42,8 @@ mod colors {
     pub static BLACK: Color = [0.0, 0.0, 0.0];
 }
 
-impl GraphicCube {
-    pub fn new<F: Facade>(facade: &F) -> GraphicCube {
+impl<const N: usize> GraphicCube<N> {
+    pub fn new<F: Facade>(facade: &F) -> GraphicCube<N> {
         GraphicCube {
             view: Matrix4::look_at_rh(
                 Point3::new(0., 1., -1.),
@@ -101,16 +101,16 @@ impl GraphicCube {
                 ];
                 let data = rotations
                     .iter()
-                    .map(|rotation| {
-                        (-1i16..=1)
-                            .map(|y| {
-                                (-1i16..=1)
+                    .flat_map(|rotation| {
+                        (0..N)
+                            .flat_map(|y| {
+                                (0..N)
                                     .map(|x| Attr {
                                         model_to_world: (rotation
                                             .mul(Matrix4::from_translation(Vector3::new(
-                                                -x as f32 * 0.15,
-                                                -y as f32 * 0.15,
-                                                -0.15 * 3. / 2.,
+                                                -((x as f32) - (N as f32) / 2. + 0.5) * 0.15,
+                                                -((y as f32) - (N as f32) / 2. + 0.5) * 0.15,
+                                                -0.15 * (N as f32) / 2.,
                                             )))
                                             .into()),
                                         color: [0., 0., 0.],
@@ -118,10 +118,8 @@ impl GraphicCube {
                                     })
                                     .collect::<Vec<_>>()
                             })
-                            .flatten()
                             .collect::<Vec<_>>()
                     })
-                    .flatten()
                     .collect::<Vec<_>>();
                 //println!("{:?}", data.first());
                 glium::VertexBuffer::dynamic(facade, &data).unwrap()
@@ -162,7 +160,7 @@ impl GraphicCube {
             .unwrap();
     }
 
-    pub fn update_colors(&mut self, cube: &Cube) {
+    pub fn update_colors(&mut self, cube: &Cube<N>) {
         let mut mapping = self.per_instance.map();
         for (attr, color) in Iterator::zip(mapping.iter_mut(), cube.flatten_stickers()) {
             attr.color = match color.0 {

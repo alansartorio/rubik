@@ -1,8 +1,6 @@
-
-
 use crate::cube::{Cube, Step, Algorythm};
 
-fn depth_solve(cube: &Cube, depth: u32) -> Option<Vec<Step>> {
+fn depth_solve(cube: &Cube<3>, depth: u32) -> Option<Vec<Step>> {
     let valid_steps: Vec<Step> = "R R' L L' U U' F F' D D' B B'".parse::<Algorythm>().unwrap().0;
 
     if depth == 0 {
@@ -21,15 +19,15 @@ fn depth_solve(cube: &Cube, depth: u32) -> Option<Vec<Step>> {
     return None;
 }
 
-pub fn solve(cube: &Cube) -> Algorythm {
+pub fn solve(cube: &Cube<3>) -> Algorythm {
     Algorythm((0..).find_map(|depth| depth_solve(&cube, depth)).unwrap())
 }
 
 
 #[cfg(test)]
 mod tests {
-    use crate::cube::Cube;
     use super::*;
+    use crate::cube::Cube;
 
     #[test]
     fn test_solve() {

@@ -60,6 +60,89 @@ pub enum Movement {
     CubeRotation(CubeRotation),
 }
 
+pub enum Axis {
+    X,
+    Y,
+    Z,
+}
+
+pub struct NewMovement<const N: usize> {
+    axis: Axis,
+    layers: [bool; N],
+}
+
+fn transform_movement<const N: usize>(mov: Movement) -> NewMovement<N> {
+    let start = {
+        let mut a = [false; N];
+        a[0] = true;
+        a
+    };
+    let middle = {
+        let mut a = [false; N];
+        a[N / 2] = true;
+        a
+    };
+    let end = {
+        let mut a = [false; N];
+        a[N - 1] = true;
+        a
+    };
+    let two_start = {
+        let mut a = [false; N];
+        a[0] = true;
+        a[1] = true;
+        a
+    };
+    let two_end = {
+        let mut a = [false; N];
+        a[N - 1] = true;
+        a[N - 2] = true;
+        a
+    };
+    let all = [true; N];
+
+    match mov {
+        Movement::Rotation(face) => NewMovement {
+            axis: match face {
+                FaceId::Up | FaceId::Down => Axis::Y,
+                FaceId::Right | FaceId::Left => Axis::X,
+                FaceId::Front | FaceId::Back => Axis::Z,
+            },
+            layers: match face {
+                FaceId::Up | FaceId::Right | FaceId::Front => start,
+                FaceId::Down | FaceId::Left | FaceId::Back => end,
+            },
+        },
+        Movement::DoubleRotation(face) => NewMovement {
+            axis: match face {
+                FaceId::Up | FaceId::Down => Axis::Y,
+                FaceId::Right | FaceId::Left => Axis::X,
+                FaceId::Front | FaceId::Back => Axis::Z,
+            },
+            layers: match face {
+                FaceId::Up | FaceId::Right | FaceId::Front => two_start,
+                FaceId::Down | FaceId::Left | FaceId::Back => two_end,
+            },
+        },
+        Movement::MiddleRotation(axis) => NewMovement {
+            axis: match axis {
+                MiddleRotation::M => Axis::X,
+                MiddleRotation::E => Axis::Y,
+                MiddleRotation::S => Axis::Z,
+            },
+            layers: middle,
+        },
+        Movement::CubeRotation(axis) => NewMovement {
+            axis: match axis {
+                CubeRotation::X => Axis::X,
+                CubeRotation::Y => Axis::Y,
+                CubeRotation::Z => Axis::Z,
+            },
+            layers: all,
+        },
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Step {
     pub movement: Movement,
@@ -260,44 +343,29 @@ impl TryFrom<char> for StickerType {
 }
 
 #[derive(PartialEq, Eq, Clone, Copy)]
-pub struct FaceData {
-    tiles: [[StickerType; 3]; 3],
+pub struct FaceData<const N: usize> {
+    tiles: [[StickerType; N]; N],
 }
-impl FaceData {
-    fn new(tiles: [[StickerType; 3]; 3]) -> FaceData {
+impl<const N: usize> FaceData<N> {
+    fn new(tiles: [[StickerType; N]; N]) -> FaceData<N> {
         FaceData { tiles }
     }
 
     fn rotate(&mut self) -> &mut Self {
         let tiles = &mut self.tiles;
-        let tmp = tiles[0][0];
-        tiles[0][0] = tiles[0][2];
-        tiles[0][2] = tiles[2][2];
-        tiles[2][2] = tiles[2][0];
-        tiles[2][0] = tmp;
-
-        let tmp = tiles[0][1];
-        tiles[0][1] = tiles[1][2];
-        tiles[1][2] = tiles[2][1];
-        tiles[2][1] = tiles[1][0];
-        tiles[1][0] = tmp;
+        let tmp = *tiles;
+        for y in 0..N {
+            for x in 0..N {
+                tiles[y][x] = tmp[x][N - 1 - y]
+            }
+        }
 
         self
     }
 
-    fn flatten_stickers(&self) -> [StickerType; 9] {
-        let tiles = self.tiles;
-        [
-            tiles[0][0],
-            tiles[0][1],
-            tiles[0][2],
-            tiles[1][0],
-            tiles[1][1],
-            tiles[1][2],
-            tiles[2][0],
-            tiles[2][1],
-            tiles[2][2],
-        ]
+    //TODO: Find a better way of returning [StickerType; N * N]
+    fn flatten_stickers(&self) -> Vec<StickerType> {
+        self.tiles.iter().flatten().cloned().collect::<Vec<_>>()
     }
 
     fn is_solved(&self) -> bool {
@@ -308,7 +376,7 @@ impl FaceData {
         iter.all(|s| s == sticker)
     }
 }
-impl FromStr for FaceData {
+impl<const N: usize> FromStr for FaceData<N> {
     type Err = Box<dyn Error>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -330,7 +398,7 @@ impl FromStr for FaceData {
     }
 }
 
-impl Debug for FaceData {
+impl<const N: usize> Debug for FaceData<N> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(
             f,
@@ -348,83 +416,91 @@ impl Debug for FaceData {
     }
 }
 
-struct Face {
-    sides: EnumMap<Sides, FaceBorderView>,
-    face_data: Rc<RefCell<FaceData>>,
+struct Face<const N: usize> {
+    sides: EnumMap<Sides, FaceBorderView<N>>,
+    face_data: Rc<RefCell<FaceData<N>>>,
+    oposite: Rc<RefCell<FaceData<N>>>,
 }
 
-impl Debug for Face {
+impl<const N: usize> Debug for Face<N> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", RefCell::borrow(&self.face_data))
     }
 }
-impl Face {
-    fn rotate(&self, cw_turns: i8) {
-        let ccw_turns = normalize_rotation(4 - cw_turns);
+impl<const N: usize> Face<N> {
+    fn rotate(&self, cw_turns: i8, depth: usize) {
+        let cw_turns = normalize_rotation(cw_turns);
+        let ccw_turns = 4 - cw_turns;
+        for _ in 0..cw_turns {
+            if depth == N - 1 {
+                RefCell::borrow_mut(&self.oposite).rotate();
+            }
+        }
         for _ in 0..ccw_turns {
-            RefCell::borrow_mut(&self.face_data).rotate();
-            let tmp = self.sides[Top].get();
-            self.sides[Top].set(self.sides[Right].get());
-            self.sides[Right].set(self.sides[Bottom].get());
-            self.sides[Bottom].set(self.sides[Left].get());
-            self.sides[Left].set(tmp);
+            if depth == 0 {
+                RefCell::borrow_mut(&self.face_data).rotate();
+            }
+            let tmp = self.sides[Top].get(depth);
+            self.sides[Top].set(depth, self.sides[Right].get(depth));
+            self.sides[Right].set(depth, self.sides[Bottom].get(depth));
+            self.sides[Bottom].set(depth, self.sides[Left].get(depth));
+            self.sides[Left].set(depth, tmp);
         }
     }
 }
 
-struct FaceBorderView {
-    face: Rc<RefCell<FaceData>>,
+struct FaceBorderView<const N: usize> {
+    face: Rc<RefCell<FaceData<N>>>,
     side: Sides,
 }
-impl FaceBorderView {
-    fn new(face: Rc<RefCell<FaceData>>, side: Sides) -> FaceBorderView {
+impl<const N: usize> FaceBorderView<N> {
+    fn new(face: Rc<RefCell<FaceData<N>>>, side: Sides) -> FaceBorderView<N> {
         FaceBorderView { face, side }
     }
-}
-impl FaceBorderView {
-    fn get(&self) -> [StickerType; 3] {
+
+    fn get(&self, layer: usize) -> [StickerType; N] {
         //let face: FaceData = self.face.borrow().tiles;
         let tiles = RefCell::borrow(&self.face).tiles;
-        match self.side {
-            Sides::Top => [tiles[0][0], tiles[0][1], tiles[0][2]],
-            Sides::Right => [tiles[0][2], tiles[1][2], tiles[2][2]],
-            Sides::Bottom => [tiles[2][2], tiles[2][1], tiles[2][0]],
-            Sides::Left => [tiles[2][0], tiles[1][0], tiles[0][0]],
-        }
+
+        (0..N)
+            .map(|i| match self.side {
+                Sides::Top => tiles[layer][i],
+                Sides::Right => tiles[i][N - 1 - layer],
+                Sides::Bottom => tiles[N - 1 - layer][N - 1 - i],
+                Sides::Left => tiles[N - 1 - i][layer],
+            })
+            .collect::<Vec<StickerType>>()
+            .try_into()
+            .unwrap()
     }
-    fn set(&self, row: [StickerType; 3]) {
+
+    fn set(&self, layer: usize, row: [StickerType; N]) {
         //let face: FaceData = self.face.borrow().tiles;
         let tiles = &mut RefCell::borrow_mut(&self.face).tiles;
-        match self.side {
-            Sides::Top => {
-                tiles[0][0] = row[0];
-                tiles[0][1] = row[1];
-                tiles[0][2] = row[2];
-            }
-            Sides::Right => {
-                tiles[0][2] = row[0];
-                tiles[1][2] = row[1];
-                tiles[2][2] = row[2];
-            }
-            Sides::Bottom => {
-                tiles[2][2] = row[0];
-                tiles[2][1] = row[1];
-                tiles[2][0] = row[2];
-            }
-            Sides::Left => {
-                tiles[2][0] = row[0];
-                tiles[1][0] = row[1];
-                tiles[0][0] = row[2];
+        for i in 0..N {
+            match self.side {
+                Sides::Top => {
+                    tiles[layer][i] = row[i];
+                }
+                Sides::Right => {
+                    tiles[i][N - 1 - layer] = row[i];
+                }
+                Sides::Bottom => {
+                    tiles[N - 1 - layer][N - 1 - i] = row[i];
+                }
+                Sides::Left => {
+                    tiles[N - 1 - i][layer] = row[i];
+                }
             }
         }
     }
 }
 
-pub struct Cube {
-    faces: EnumMap<FaceId, Face>,
+pub struct Cube<const N: usize> {
+    faces: EnumMap<FaceId, Face<N>>,
 }
 
-impl Clone for Cube {
+impl<const N: usize> Clone for Cube<N> {
     fn clone(&self) -> Self {
         Self::new(enum_map! {
             id => *RefCell::borrow(&self.faces[id].face_data)
@@ -432,7 +508,7 @@ impl Clone for Cube {
     }
 }
 
-impl Debug for Cube {
+impl<const N: usize> Debug for Cube<N> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(
             f,
@@ -447,14 +523,14 @@ impl Debug for Cube {
     }
 }
 
-impl FromStr for Cube {
+impl<const N: usize> FromStr for Cube<N> {
     type Err = Box<dyn Error>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let faces: [FaceData; 6] = s
+        let faces: [FaceData<N>; 6] = s
             .trim()
             .split("\n\n")
-            .map(|face| face.parse::<FaceData>())
+            .map(|face| face.parse::<FaceData<N>>())
             .collect::<Result<Vec<_>, _>>()
             .map_err(|_| "Error parsing face")?
             .try_into()
@@ -471,8 +547,8 @@ impl FromStr for Cube {
     }
 }
 
-impl Cube {
-    fn new(faces: EnumMap<FaceId, FaceData>) -> Cube {
+impl<const N: usize> Cube<N> {
+    fn new(faces: EnumMap<FaceId, FaceData<N>>) -> Cube<N> {
         Cube {
             faces: {
                 let up_data = Rc::new(RefCell::new(faces[FaceId::Up]));
@@ -491,6 +567,7 @@ impl Cube {
                             Sides::Left => FaceBorderView::new(Rc::clone(&left_data), Top),
                             Sides::Right => FaceBorderView::new(Rc::clone(&right_data), Top),
                         },
+                        oposite: Rc::clone(&down_data),
                     },
                     FaceId::Down => Face {
                         face_data: Rc::clone(&down_data),
@@ -500,6 +577,7 @@ impl Cube {
                             Sides::Left => FaceBorderView::new(Rc::clone(&left_data), Bottom),
                             Sides::Right => FaceBorderView::new(Rc::clone(&right_data), Bottom),
                         },
+                        oposite: Rc::clone(&up_data),
                     },
                     FaceId::Left => Face {
                         face_data: Rc::clone(&left_data),
@@ -509,6 +587,7 @@ impl Cube {
                             Sides::Left => FaceBorderView::new(Rc::clone(&back_data), Right),
                             Sides::Right => FaceBorderView::new(Rc::clone(&front_data), Left),
                         },
+                        oposite: Rc::clone(&right_data),
                     },
                     FaceId::Right => Face {
                         face_data: Rc::clone(&right_data),
@@ -518,6 +597,7 @@ impl Cube {
                             Sides::Left => FaceBorderView::new(Rc::clone(&front_data), Right),
                             Sides::Right => FaceBorderView::new(Rc::clone(&back_data), Left),
                         },
+                        oposite: Rc::clone(&left_data),
                     },
                     FaceId::Back => Face {
                         face_data: Rc::clone(&back_data),
@@ -527,6 +607,7 @@ impl Cube {
                             Sides::Left => FaceBorderView::new(Rc::clone(&right_data), Right),
                             Sides::Right => FaceBorderView::new(Rc::clone(&left_data), Left),
                         },
+                        oposite: Rc::clone(&front_data),
                     },
                     FaceId::Front => Face {
                         face_data: Rc::clone(&front_data),
@@ -536,6 +617,7 @@ impl Cube {
                             Sides::Left => FaceBorderView::new(Rc::clone(&left_data), Right),
                             Sides::Right => FaceBorderView::new(Rc::clone(&right_data), Left),
                         },
+                        oposite: Rc::clone(&back_data),
                     },
                 }
             },
@@ -546,6 +628,242 @@ impl Cube {
         FaceId::iter().all(|face| self.get_face(face).is_solved())
     }
 
+    pub fn hide_sticker(&self, face: FaceId, y: u8, x: u8) {
+        let mut face = RefCell::borrow_mut(&self.faces[face].face_data);
+        face.tiles[y as usize][x as usize] = StickerType(None);
+    }
+
+    pub fn solve(&self) {
+        for (id, face) in self.faces.iter() {
+            let mut face = RefCell::borrow_mut(&face.face_data);
+
+            for y in 0..N {
+                for x in 0..N {
+                    face.tiles[y][x] = StickerType(Some(id));
+                }
+            }
+            //if face.tiles[1][1].0.is_some() {
+            //let center = face.tiles[1][1];
+            //for y in 0..N {
+            //for x in 0..N {
+            //face.tiles[y][x] = center;
+            //}
+            //}
+            //}
+        }
+    }
+
+    pub fn scramble_count(&self, move_count: u8) {
+        self.apply_algorythm(&Algorythm::random(move_count));
+    }
+
+    pub fn scramble(&self) {
+        self.scramble_count(100);
+    }
+
+    pub fn get_face(&self, face: FaceId) -> FaceData<N> {
+        *RefCell::borrow(&self.faces[face].face_data)
+    }
+
+    pub fn apply_step(&self, step: Step) {
+        let movement = transform_movement::<N>(step.movement);
+        //let count = step.count;
+        //match step.movement {
+        //Movement::Rotation(rot) => self.rotate_face(rot, count),
+        //Movement::DoubleRotation(rot) => self.rotate_double(rot, count),
+        //Movement::MiddleRotation(rot) => self.rotate_middle(rot, count),
+        //Movement::CubeRotation(rot) => self.rotate_cube(rot, count),
+        //}}
+
+        let invert_count = match step.movement {
+            Movement::Rotation(face) | Movement::DoubleRotation(face) => match face {
+                FaceId::Left | FaceId::Back | FaceId::Down => -1,
+                _ => 1,
+            },
+            _ => 1,
+        };
+        let count = step.count * invert_count;
+
+
+        let face = match movement.axis {
+            Axis::Y => FaceId::Up,
+            Axis::X => FaceId::Right,
+            Axis::Z => FaceId::Front,
+        };
+
+        for (i, &v) in movement.layers.iter().enumerate() {
+            if v {
+                self.faces[face].rotate(count, i);
+            }
+        }
+    }
+
+    pub fn apply_algorythm(&self, algorythm: &Algorythm) {
+        for &step in &algorythm.0 {
+            self.apply_step(step);
+        }
+    }
+
+    pub fn flatten_stickers(&self) -> Vec<StickerType> {
+        [
+            FaceId::Up,
+            FaceId::Down,
+            FaceId::Right,
+            FaceId::Left,
+            FaceId::Front,
+            FaceId::Back,
+        ]
+        .map(|face| self.get_face(face))
+        .iter()
+        .flat_map(|face| face.flatten_stickers().to_vec())
+        .collect::<Vec<_>>()
+    }
+
+    pub fn solved() -> Self {
+        fn make_face<const N: usize>(face_id: FaceId) -> FaceData<N> {
+            FaceData::new(
+                (0..N)
+                    .map(|_| {
+                        (0..N)
+                            .map(|_| StickerType(Some(face_id)))
+                            .collect::<Vec<_>>()
+                            .try_into()
+                            .unwrap()
+                    })
+                    .collect::<Vec<_>>()
+                    .try_into()
+                    .unwrap(),
+            )
+        }
+
+        Cube::new(enum_map! {
+            face_id => make_face(face_id)
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cube_parse() {
+        let cube: Cube<3> = Cube::solved();
+        cube.apply_step(Step::new(Movement::Rotation(FaceId::Up), 1));
+        assert_eq!(
+            cube.get_face(FaceId::Up),
+            FaceData::from_str("uuu\nuuu\nuuu").unwrap()
+        );
+        assert_eq!(
+            cube.get_face(FaceId::Front),
+            FaceData::from_str("rrr\nfff\nfff").unwrap()
+        );
+    }
+
+    #[test]
+    fn parse_algorythms() {
+        let algorythm: Algorythm = " R R'   L L'   ".parse().unwrap();
+
+        assert_eq!(
+            algorythm,
+            Algorythm(vec![
+                Step::new(Movement::Rotation(FaceId::Right), 1),
+                Step::new(Movement::Rotation(FaceId::Right), -1),
+                Step::new(Movement::Rotation(FaceId::Left), 1),
+                Step::new(Movement::Rotation(FaceId::Left), -1),
+            ])
+        );
+    }
+
+    #[test]
+    fn simple_algorythm() {
+        let algorythm: Algorythm = "R U".parse().unwrap();
+
+        let reversed = -algorythm.clone();
+
+        let cube: Cube<3> = Cube::solved();
+
+        cube.apply_algorythm(&algorythm);
+        assert!(!cube.is_solved());
+
+        cube.apply_algorythm(&reversed);
+        assert!(cube.is_solved());
+    }
+
+    #[test]
+    fn algorythm_and_reverse() {
+        let algorythm: Algorythm =
+            "B2 D' B L' F2 U D' L' D R2 L' F2 B2 L2 D F' L2 U' B2 F D2 R D L2 U"
+                .parse()
+                .unwrap();
+
+        let reversed = -algorythm.clone();
+
+        let cube: Cube<3> = Cube::solved();
+
+        cube.apply_algorythm(&algorythm);
+        assert!(!cube.is_solved());
+
+        cube.apply_algorythm(&reversed);
+        assert!(cube.is_solved());
+    }
+
+    #[test]
+    fn find_corner() {
+        let cube = Cube::solved();
+
+        let corner = cube.find_corner([FaceId::Up, FaceId::Right, FaceId::Front]);
+        assert!(corner.is_some());
+        let corner = corner.unwrap();
+        assert_eq!(
+            HashSet::<_>::from_iter(corner),
+            HashSet::from_iter([
+                (FaceId::Up, 2, 2),
+                (FaceId::Front, 0, 2),
+                (FaceId::Right, 0, 0)
+            ])
+        );
+
+        cube.apply_step(Step::new(Movement::Rotation(FaceId::Right), 1));
+
+        let corner = cube.find_corner([FaceId::Up, FaceId::Right, FaceId::Front]);
+        assert!(corner.is_some());
+        let corner = corner.unwrap();
+        assert_eq!(
+            HashSet::<_>::from_iter(corner),
+            HashSet::from_iter([
+                (FaceId::Up, 0, 2),
+                (FaceId::Back, 0, 0),
+                (FaceId::Right, 0, 2)
+            ])
+        );
+    }
+
+    #[test]
+    fn find_edge() {
+        let cube = Cube::solved();
+
+        let edge = cube.find_edge([FaceId::Up, FaceId::Right]);
+        assert!(edge.is_some());
+        let edge = edge.unwrap();
+        assert_eq!(
+            HashSet::<_>::from_iter(edge),
+            HashSet::from_iter([(FaceId::Up, 1, 2), (FaceId::Right, 0, 1)])
+        );
+
+        cube.apply_step(Step::new(Movement::Rotation(FaceId::Right), 1));
+
+        let edge = cube.find_edge([FaceId::Up, FaceId::Right]);
+        assert!(edge.is_some());
+        let edge = edge.unwrap();
+        assert_eq!(
+            HashSet::<_>::from_iter(edge),
+            HashSet::from_iter([(FaceId::Back, 1, 0), (FaceId::Right, 1, 2)])
+        );
+    }
+}
+
+impl Cube<3> {
     pub fn find_corner(&self, corner: [FaceId; 3]) -> Option<[(FaceId, u8, u8); 3]> {
         [
             [
@@ -658,314 +976,5 @@ impl Cube {
                 false
             }
         })
-    }
-
-    pub fn hide_sticker(&self, face: FaceId, y: u8, x: u8) {
-        let mut face = RefCell::borrow_mut(&self.faces[face].face_data);
-        face.tiles[y as usize][x as usize] = StickerType(None);
-    }
-
-    pub fn solve(&self) {
-        for face in self.faces.values() {
-            let mut face = RefCell::borrow_mut(&face.face_data);
-            if face.tiles[1][1].0.is_some() {
-                let center = face.tiles[1][1];
-                face.tiles[0][0] = center;
-                face.tiles[0][1] = center;
-                face.tiles[0][2] = center;
-                face.tiles[1][0] = center;
-                face.tiles[1][1] = center;
-                face.tiles[1][2] = center;
-                face.tiles[2][0] = center;
-                face.tiles[2][1] = center;
-                face.tiles[2][2] = center;
-            }
-        }
-    }
-
-    pub fn solved() -> Cube {
-        "
-            uuu\nuuu\nuuu\n
-            ddd\nddd\nddd\n
-            rrr\nrrr\nrrr\n
-            lll\nlll\nlll\n
-            fff\nfff\nfff\n
-            bbb\nbbb\nbbb\n
-        "
-        .parse()
-        .unwrap()
-    }
-
-    pub fn scramble_count(&self, move_count: u8) {
-        self.apply_algorythm(&Algorythm::random(move_count));
-    }
-
-    pub fn scramble(&self) {
-        self.scramble_count(100);
-    }
-
-    pub fn get_face(&self, face: FaceId) -> FaceData {
-        *RefCell::borrow(&self.faces[face].face_data)
-    }
-
-    pub fn apply_step(&self, step: Step) {
-        let count = step.count;
-        match step.movement {
-            Movement::Rotation(rot) => self.rotate_face(rot, count),
-            Movement::DoubleRotation(rot) => self.rotate_double(rot, count),
-            Movement::MiddleRotation(rot) => self.rotate_middle(rot, count),
-            Movement::CubeRotation(rot) => self.rotate_cube(rot, count),
-        }
-    }
-
-    pub fn apply_algorythm(&self, algorythm: &Algorythm) {
-        for &step in &algorythm.0 {
-            self.apply_step(step);
-        }
-    }
-
-    fn rotate_face(&self, face: FaceId, cw_turns: i8) {
-        self.faces[face].rotate(cw_turns);
-    }
-
-    fn rotate_double(&self, face: FaceId, cw_turns: i8) {
-        let cw_turns = normalize_rotation(cw_turns);
-        self.faces[face].rotate(cw_turns as i8);
-
-        let (middle, count): (_, i8) = match face {
-            FaceId::Up => (MiddleRotation::E, -1),
-            FaceId::Down => (MiddleRotation::E, 1),
-            FaceId::Right => (MiddleRotation::M, -1),
-            FaceId::Left => (MiddleRotation::M, 1),
-            FaceId::Front => (MiddleRotation::S, -1),
-            FaceId::Back => (MiddleRotation::S, 1),
-        };
-        self.rotate_middle(middle, count * cw_turns as i8);
-    }
-
-    fn rotate_cube(&self, rotation: CubeRotation, count: i8) {
-        macro_rules! borrow_mut {
-            ($face: expr) => {
-                RefCell::borrow_mut(&self.faces[$face].face_data)
-            };
-        }
-        macro_rules! borrow {
-            ($face: expr) => {
-                RefCell::borrow(&self.faces[$face].face_data)
-            };
-        }
-
-        macro_rules! copy {
-            ($to: expr, $from: expr) => {
-                *borrow_mut!($to) = *borrow!($from)
-            };
-        }
-
-        macro_rules! rotate {
-            ($face1: expr, $face2: expr, $face3: expr, $face4: expr) => {{
-                let tmp = *borrow!($face4);
-                copy!($face4, $face3);
-                copy!($face3, $face2);
-                copy!($face2, $face1);
-                *borrow_mut!($face1) = tmp;
-            }};
-        }
-
-        for _ in 0..count.abs() {
-            match rotation {
-                CubeRotation::X if count > 0 => {
-                    borrow_mut!(FaceId::Right).rotate().rotate().rotate();
-                    borrow_mut!(FaceId::Left).rotate();
-                    borrow_mut!(FaceId::Back).rotate().rotate();
-                    rotate!(FaceId::Up, FaceId::Back, FaceId::Down, FaceId::Front);
-                    borrow_mut!(FaceId::Back).rotate().rotate();
-                }
-                CubeRotation::X if count < 0 => {
-                    borrow_mut!(FaceId::Right).rotate();
-                    borrow_mut!(FaceId::Left).rotate().rotate().rotate();
-                    borrow_mut!(FaceId::Back).rotate().rotate();
-                    rotate!(FaceId::Up, FaceId::Front, FaceId::Down, FaceId::Back);
-                    borrow_mut!(FaceId::Back).rotate().rotate();
-                }
-                CubeRotation::Y if count > 0 => {
-                    borrow_mut!(FaceId::Up).rotate().rotate().rotate();
-                    borrow_mut!(FaceId::Down).rotate();
-                    rotate!(FaceId::Front, FaceId::Left, FaceId::Back, FaceId::Right);
-                }
-                CubeRotation::Y if count < 0 => {
-                    borrow_mut!(FaceId::Up).rotate();
-                    borrow_mut!(FaceId::Down).rotate().rotate().rotate();
-                    rotate!(FaceId::Front, FaceId::Right, FaceId::Back, FaceId::Left);
-                }
-                CubeRotation::Z if count > 0 => {
-                    borrow_mut!(FaceId::Front).rotate().rotate().rotate();
-                    borrow_mut!(FaceId::Back).rotate();
-                    borrow_mut!(FaceId::Left).rotate().rotate().rotate();
-                    borrow_mut!(FaceId::Right).rotate();
-                    borrow_mut!(FaceId::Down).rotate().rotate();
-                    rotate!(FaceId::Up, FaceId::Right, FaceId::Down, FaceId::Left);
-                    borrow_mut!(FaceId::Down).rotate().rotate();
-                    borrow_mut!(FaceId::Right).rotate().rotate().rotate();
-                    borrow_mut!(FaceId::Left).rotate();
-                }
-                CubeRotation::Z if count < 0 => {
-                    borrow_mut!(FaceId::Front).rotate();
-                    borrow_mut!(FaceId::Back).rotate().rotate().rotate();
-                    borrow_mut!(FaceId::Left).rotate().rotate().rotate();
-                    borrow_mut!(FaceId::Right).rotate();
-                    borrow_mut!(FaceId::Down).rotate().rotate();
-                    rotate!(FaceId::Up, FaceId::Left, FaceId::Down, FaceId::Right);
-                    borrow_mut!(FaceId::Down).rotate().rotate();
-                    borrow_mut!(FaceId::Right).rotate().rotate().rotate();
-                    borrow_mut!(FaceId::Left).rotate();
-                }
-                _ if count == 0 => (),
-                _ => unreachable!(),
-            }
-        }
-    }
-
-    fn rotate_middle(&self, rotation: MiddleRotation, count: i8) {
-        let cw_turns = normalize_rotation(count);
-        for _ in 0..cw_turns {
-            match rotation {
-                MiddleRotation::M => {
-                    self.rotate_face(FaceId::Left, -1);
-                    self.rotate_face(FaceId::Right, 1);
-                    self.rotate_cube(CubeRotation::X, -1);
-                }
-                MiddleRotation::E => {
-                    self.rotate_face(FaceId::Up, 1);
-                    self.rotate_face(FaceId::Down, -1);
-                    self.rotate_cube(CubeRotation::Y, -1);
-                }
-                MiddleRotation::S => {
-                    self.rotate_face(FaceId::Back, 1);
-                    self.rotate_face(FaceId::Front, -1);
-                    self.rotate_cube(CubeRotation::Z, -1);
-                }
-            };
-        }
-    }
-
-    pub fn flatten_stickers(&self) -> Vec<StickerType> {
-        [
-            FaceId::Up,
-            FaceId::Down,
-            FaceId::Right,
-            FaceId::Left,
-            FaceId::Front,
-            FaceId::Back,
-        ]
-        .map(|face| self.get_face(face))
-        .iter()
-        .flat_map(|face| face.flatten_stickers().to_vec())
-        .collect::<Vec<_>>()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn cube_parse() {
-        let cube = Cube::solved();
-        cube.rotate_face(FaceId::Up, 1);
-        assert_eq!(
-            cube.get_face(FaceId::Up),
-            FaceData::from_str("uuu\nuuu\nuuu").unwrap()
-        );
-        assert_eq!(
-            cube.get_face(FaceId::Front),
-            FaceData::from_str("rrr\nfff\nfff").unwrap()
-        );
-    }
-
-    #[test]
-    fn parse_algorythms() {
-        let algorythm: Algorythm = " R R'   L L'   ".parse().unwrap();
-
-        assert_eq!(
-            algorythm,
-            Algorythm(vec![
-                Step::new(Movement::Rotation(FaceId::Right), 1),
-                Step::new(Movement::Rotation(FaceId::Right), -1),
-                Step::new(Movement::Rotation(FaceId::Left), 1),
-                Step::new(Movement::Rotation(FaceId::Left), -1),
-            ])
-        );
-    }
-
-    #[test]
-    fn algorythm_and_reverse() {
-        let algorythm: Algorythm =
-            "B2 D' B L' F2 U D' L' D R2 L' F2 B2 L2 D F' L2 U' B2 F D2 R D L2 U"
-                .parse()
-                .unwrap();
-
-        let reversed = -algorythm.clone();
-
-        let cube = Cube::solved();
-
-        cube.apply_algorythm(&algorythm);
-        assert!(!cube.is_solved());
-
-        cube.apply_algorythm(&reversed);
-        assert!(cube.is_solved());
-    }
-
-    #[test]
-    fn find_corner() {
-        let cube = Cube::solved();
-
-        let corner = cube.find_corner([FaceId::Up, FaceId::Right, FaceId::Front]);
-        assert!(corner.is_some());
-        let corner = corner.unwrap();
-        assert_eq!(
-            HashSet::<_>::from_iter(corner),
-            HashSet::from_iter([
-                (FaceId::Up, 2, 2),
-                (FaceId::Front, 0, 2),
-                (FaceId::Right, 0, 0)
-            ])
-        );
-
-        cube.apply_step(Step::new(Movement::Rotation(FaceId::Right), 1));
-
-        let corner = cube.find_corner([FaceId::Up, FaceId::Right, FaceId::Front]);
-        assert!(corner.is_some());
-        let corner = corner.unwrap();
-        assert_eq!(
-            HashSet::<_>::from_iter(corner),
-            HashSet::from_iter([
-                (FaceId::Up, 0, 2),
-                (FaceId::Back, 0, 0),
-                (FaceId::Right, 0, 2)
-            ])
-        );
-    }
-
-    #[test]
-    fn find_edge() {
-        let cube = Cube::solved();
-
-        let edge = cube.find_edge([FaceId::Up, FaceId::Right]);
-        assert!(edge.is_some());
-        let edge = edge.unwrap();
-        assert_eq!(
-            HashSet::<_>::from_iter(edge),
-            HashSet::from_iter([(FaceId::Up, 1, 2), (FaceId::Right, 0, 1)])
-        );
-
-        cube.apply_step(Step::new(Movement::Rotation(FaceId::Right), 1));
-
-        let edge = cube.find_edge([FaceId::Up, FaceId::Right]);
-        assert!(edge.is_some());
-        let edge = edge.unwrap();
-        assert_eq!(
-            HashSet::<_>::from_iter(edge),
-            HashSet::from_iter([(FaceId::Back, 1, 0), (FaceId::Right, 1, 2)])
-        );
     }
 }

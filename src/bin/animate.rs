@@ -29,7 +29,7 @@ fn main() {
         .collect::<Vec<_>>()
         .join("\n");
 
-    let cube: Cube = cube_string.parse().unwrap();
+    let cube: Cube<3> = cube_string.parse().unwrap();
 
     let mut cube = BoundCube::from_cube(&display, cube);
 
@@ -39,13 +39,11 @@ fn main() {
         let stdin = io::stdin();
         let lines = stdin.lock().lines().map(|line| line.unwrap());
 
-        let algorythms = lines.map(|line| line.parse::<Algorythm>().unwrap());
+        let steps = lines.map(|line| line.parse::<Step>().unwrap());
 
-        for algorythm in algorythms {
-            for step in algorythm.0 {
-                tx.send(step).unwrap();
-                thread::sleep(Duration::from_millis(200));
-            }
+        for step in steps {
+            tx.send(step).unwrap();
+            thread::sleep(Duration::from_millis(200));
         }
     });
 
