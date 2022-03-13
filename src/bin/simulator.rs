@@ -178,14 +178,21 @@ fn main() {
                                             None
                                         }
                                         VirtualKeyCode::NumpadSubtract
-                                        | VirtualKeyCode::NumpadAdd => {
+                                        | VirtualKeyCode::Minus
+                                        | VirtualKeyCode::NumpadAdd
+                                        | VirtualKeyCode::Equals
+                                        | VirtualKeyCode::Plus => {
                                             cube_size = (cube_size as i8
                                                 + match keycode {
-                                                    VirtualKeyCode::NumpadSubtract => -1i8,
-                                                    VirtualKeyCode::NumpadAdd => 1i8,
+                                                    VirtualKeyCode::NumpadSubtract
+                                                    | VirtualKeyCode::Minus => -1i8,
+                                                    VirtualKeyCode::NumpadAdd
+                                                    | VirtualKeyCode::Plus
+                                                    | VirtualKeyCode::Equals => 1i8,
                                                     _ => unreachable!(),
                                                 })
                                                 as usize;
+                                            cube_size = cube_size.clamp(1, 59);
                                             cube = create_cube(&display, cube_size);
                                             timer.reset();
                                             timer_enabled = false;

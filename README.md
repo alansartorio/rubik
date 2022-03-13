@@ -1,6 +1,9 @@
 
 # Rubik's Cube made in Rust with glium
 
+
+## Change Rubik's size with `+` and `-` keys
+
 ## Keybinds are compatible with [cstimer](https://cstimer.net)'s virtual cube:
 
 * i => R
