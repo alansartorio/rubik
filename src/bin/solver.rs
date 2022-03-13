@@ -5,11 +5,9 @@ use std::{
 
 use lazy_static::{__Deref, lazy_static};
 use rubik::{
-    cube::{
-        Cube,
-        FaceId::{self, *},
-    },
+    cube::Cube,
     solver::solve,
+    step::FaceId::{self, *},
 };
 use strum::IntoEnumIterator;
 
@@ -107,7 +105,7 @@ fn main() {
         let clone = whitelist(&cube, acum_step.clone());
         let step_solution = solve(&clone);
 
-        cube.apply_algorythm(&step_solution);
+        cube.apply_notation_algorythm(&step_solution);
         println!("{}", step_solution.to_string());
     }
 }

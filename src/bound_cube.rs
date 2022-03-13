@@ -2,8 +2,9 @@ use cgmath::Vector3;
 use glium::{backend::Facade, Frame};
 
 use crate::{
-    cube::{Algorythm, Cube, CubeRotation, FaceId::*, MiddleRotation, Movement, Step},
+    cube::Cube,
     graphic_cube::GraphicCube,
+    step::{CubeRotation, FaceId::*, MiddleRotation, Movement, NotationAlgorythm, NotationStep},
 };
 
 pub struct BoundCube<const N: usize> {
@@ -41,9 +42,9 @@ pub trait BoundCubeTrait {
 
     fn draw(&self, target: &mut Frame);
 
-    fn apply_step(&mut self, step: Step);
+    fn apply_notation_step(&mut self, step: NotationStep);
 
-    fn apply_algorythm_unanimated(&mut self, algorythm: &Algorythm);
+    fn apply_notation_algorythm_unanimated(&mut self, algorythm: &NotationAlgorythm);
 }
 
 impl<const N: usize> BoundCube<N> {
@@ -88,7 +89,7 @@ impl<const N: usize> BoundCubeTrait for BoundCube<N> {
         self.graphic_cube.draw(target);
     }
 
-    fn apply_step(&mut self, step: Step) {
+    fn apply_notation_step(&mut self, step: NotationStep) {
         let start = {
             let mut a = [false; N];
             a[0] = true;
@@ -169,7 +170,7 @@ impl<const N: usize> BoundCubeTrait for BoundCube<N> {
         };
         rotation *= step.count;
 
-        self.cube.apply_step(step);
+        self.cube.apply_notation_step(step);
 
         self.graphic_cube.update_colors(&self.cube);
         self.graphic_cube.update_rotations(
@@ -193,8 +194,8 @@ impl<const N: usize> BoundCubeTrait for BoundCube<N> {
         );
     }
 
-    fn apply_algorythm_unanimated(&mut self, algorythm: &Algorythm) {
-        self.cube.apply_algorythm(algorythm);
+    fn apply_notation_algorythm_unanimated(&mut self, algorythm: &NotationAlgorythm) {
+        self.cube.apply_notation_algorythm(algorythm);
         self.update_colors();
     }
 }

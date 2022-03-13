@@ -1,17 +1,13 @@
-use bimap::BiMap;
 use enum_map::{enum_map, Enum, EnumMap};
-use rand::seq::SliceRandom;
 use std::char;
 use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::error::Error;
 use std::fmt::{Debug, Display};
 use std::iter::FromIterator;
-use std::ops::Neg;
 use std::str::FromStr;
 use std::{cell::RefCell, convert::TryInto, rc::Rc};
 use strum::IntoEnumIterator;
-use strum_macros::EnumIter;
 
 #[derive(Enum)]
 enum Sides {
@@ -22,297 +18,13 @@ enum Sides {
 }
 use Sides::*;
 
+use crate::step::{Algorythm, Axis, FaceId, NotationAlgorythm, NotationStep, Step};
+
 #[derive(Debug, Clone)]
 pub struct FaceIdParseError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StickerType(pub Option<FaceId>);
-
-#[derive(Debug, Enum, EnumIter, PartialEq, Eq, Clone, Copy, Hash)]
-pub enum FaceId {
-    Up,
-    Down,
-    Right,
-    Left,
-    Front,
-    Back,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum MiddleRotation {
-    M,
-    E,
-    S,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum CubeRotation {
-    X,
-    Y,
-    Z,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Movement {
-    Rotation(FaceId),
-    DoubleRotation(FaceId),
-    MiddleRotation(MiddleRotation),
-    CubeRotation(CubeRotation),
-}
-
-pub enum Axis {
-    X,
-    Y,
-    Z,
-}
-
-pub struct NewMovement<const N: usize> {
-    axis: Axis,
-    layers: [bool; N],
-}
-
-fn transform_movement<const N: usize>(mov: Movement) -> NewMovement<N> {
-    let start = {
-        let mut a = [false; N];
-        a[0] = true;
-        a
-    };
-    let middle = {
-        let mut a = [false; N];
-        a[N / 2] = true;
-        a
-    };
-    let end = {
-        let mut a = [false; N];
-        a[N - 1] = true;
-        a
-    };
-    let two_start = {
-        if N == 1 {
-            [true; N]
-        } else {
-            let mut a = [false; N];
-            a[0] = true;
-            a[1] = true;
-            a
-        }
-    };
-    let two_end = {
-        if N == 1 {
-            [true; N]
-        } else {
-            let mut a = [false; N];
-            a[N - 1] = true;
-            a[N - 2] = true;
-            a
-        }
-    };
-    let all = [true; N];
-
-    match mov {
-        Movement::Rotation(face) => NewMovement {
-            axis: match face {
-                FaceId::Up | FaceId::Down => Axis::Y,
-                FaceId::Right | FaceId::Left => Axis::X,
-                FaceId::Front | FaceId::Back => Axis::Z,
-            },
-            layers: match face {
-                FaceId::Up | FaceId::Right | FaceId::Front => start,
-                FaceId::Down | FaceId::Left | FaceId::Back => end,
-            },
-        },
-        Movement::DoubleRotation(face) => NewMovement {
-            axis: match face {
-                FaceId::Up | FaceId::Down => Axis::Y,
-                FaceId::Right | FaceId::Left => Axis::X,
-                FaceId::Front | FaceId::Back => Axis::Z,
-            },
-            layers: match face {
-                FaceId::Up | FaceId::Right | FaceId::Front => two_start,
-                FaceId::Down | FaceId::Left | FaceId::Back => two_end,
-            },
-        },
-        Movement::MiddleRotation(axis) => NewMovement {
-            axis: match axis {
-                MiddleRotation::M => Axis::X,
-                MiddleRotation::E => Axis::Y,
-                MiddleRotation::S => Axis::Z,
-            },
-            layers: middle,
-        },
-        Movement::CubeRotation(axis) => NewMovement {
-            axis: match axis {
-                CubeRotation::X => Axis::X,
-                CubeRotation::Y => Axis::Y,
-                CubeRotation::Z => Axis::Z,
-            },
-            layers: all,
-        },
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Step {
-    pub movement: Movement,
-    pub count: i8,
-}
-
-impl Neg for Step {
-    type Output = Self;
-
-    fn neg(self) -> Self::Output {
-        Self {
-            movement: self.movement,
-            count: -self.count,
-        }
-    }
-}
-
-lazy_static! {
-    static ref MAPPING: BiMap<&'static str, Step> = {
-        let mut m = BiMap::new();
-        m.insert("R", Step::new(Movement::Rotation(FaceId::Right), 1));
-        m.insert("R2", Step::new(Movement::Rotation(FaceId::Right), 2));
-        m.insert("R'", Step::new(Movement::Rotation(FaceId::Right), -1));
-        m.insert("L", Step::new(Movement::Rotation(FaceId::Left), 1));
-        m.insert("L2", Step::new(Movement::Rotation(FaceId::Left), 2));
-        m.insert("L'", Step::new(Movement::Rotation(FaceId::Left), -1));
-        m.insert("U", Step::new(Movement::Rotation(FaceId::Up), 1));
-        m.insert("U2", Step::new(Movement::Rotation(FaceId::Up), 2));
-        m.insert("U'", Step::new(Movement::Rotation(FaceId::Up), -1));
-        m.insert("D", Step::new(Movement::Rotation(FaceId::Down), 1));
-        m.insert("D2", Step::new(Movement::Rotation(FaceId::Down), 2));
-        m.insert("D'", Step::new(Movement::Rotation(FaceId::Down), -1));
-        m.insert("F", Step::new(Movement::Rotation(FaceId::Front), 1));
-        m.insert("F2", Step::new(Movement::Rotation(FaceId::Front), 2));
-        m.insert("F'", Step::new(Movement::Rotation(FaceId::Front), -1));
-        m.insert("B", Step::new(Movement::Rotation(FaceId::Back), 1));
-        m.insert("B2", Step::new(Movement::Rotation(FaceId::Back), 2));
-        m.insert("B'", Step::new(Movement::Rotation(FaceId::Back), -1));
-        m.insert("r", Step::new(Movement::DoubleRotation(FaceId::Right), 1));
-        m.insert("r'", Step::new(Movement::DoubleRotation(FaceId::Right), -1));
-        m.insert("l", Step::new(Movement::DoubleRotation(FaceId::Left), 1));
-        m.insert("l'", Step::new(Movement::DoubleRotation(FaceId::Left), -1));
-        m.insert("u", Step::new(Movement::DoubleRotation(FaceId::Up), 1));
-        m.insert("u'", Step::new(Movement::DoubleRotation(FaceId::Up), -1));
-        m.insert("d", Step::new(Movement::DoubleRotation(FaceId::Down), 1));
-        m.insert("d'", Step::new(Movement::DoubleRotation(FaceId::Down), -1));
-        m.insert("f", Step::new(Movement::DoubleRotation(FaceId::Front), 1));
-        m.insert("f'", Step::new(Movement::DoubleRotation(FaceId::Front), -1));
-        m.insert("b", Step::new(Movement::DoubleRotation(FaceId::Back), 1));
-        m.insert("b'", Step::new(Movement::DoubleRotation(FaceId::Back), -1));
-        m.insert(
-            "M",
-            Step::new(Movement::MiddleRotation(MiddleRotation::M), 1),
-        );
-        m.insert(
-            "M'",
-            Step::new(Movement::MiddleRotation(MiddleRotation::M), -1),
-        );
-        m.insert(
-            "E",
-            Step::new(Movement::MiddleRotation(MiddleRotation::E), 1),
-        );
-        m.insert(
-            "E'",
-            Step::new(Movement::MiddleRotation(MiddleRotation::E), -1),
-        );
-        m.insert(
-            "S",
-            Step::new(Movement::MiddleRotation(MiddleRotation::S), 1),
-        );
-        m.insert(
-            "S'",
-            Step::new(Movement::MiddleRotation(MiddleRotation::S), -1),
-        );
-        m.insert("x", Step::new(Movement::CubeRotation(CubeRotation::X), 1));
-        m.insert("x'", Step::new(Movement::CubeRotation(CubeRotation::X), -1));
-        m.insert("y", Step::new(Movement::CubeRotation(CubeRotation::Y), 1));
-        m.insert("y'", Step::new(Movement::CubeRotation(CubeRotation::Y), -1));
-        m.insert("z", Step::new(Movement::CubeRotation(CubeRotation::Z), 1));
-        m.insert("z'", Step::new(Movement::CubeRotation(CubeRotation::Z), -1));
-        m
-    };
-}
-
-impl FromStr for Step {
-    type Err = Box<dyn Error>;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        MAPPING
-            .get_by_left(s)
-            .map(|&m| m)
-            .ok_or("Invalid Step String".into())
-    }
-}
-
-impl ToString for Step {
-    fn to_string(&self) -> String {
-        (*MAPPING.get_by_right(self).unwrap()).to_owned()
-    }
-}
-
-impl Step {
-    pub fn new(movement: Movement, count: i8) -> Step {
-        Step { movement, count }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Algorythm(pub Vec<Step>);
-
-impl ToString for Algorythm {
-    fn to_string(&self) -> String {
-        self.0
-            .iter()
-            .map(ToString::to_string)
-            .collect::<Vec<_>>()
-            .join(" ")
-    }
-}
-
-impl Algorythm {
-    pub fn random(depth: u8) -> Algorythm {
-        let moves = [
-            FaceId::Up,
-            FaceId::Down,
-            FaceId::Right,
-            FaceId::Left,
-            FaceId::Front,
-            FaceId::Back,
-        ];
-
-        let mut steps = vec![];
-        let mut rng = rand::thread_rng();
-        for _ in 0..depth {
-            let choice = *moves.choose(&mut rng).unwrap();
-            steps.push(Step::new(Movement::Rotation(choice), 1));
-        }
-
-        Algorythm(steps)
-    }
-}
-
-impl Neg for Algorythm {
-    type Output = Self;
-
-    fn neg(self) -> Self::Output {
-        Algorythm(self.0.iter().rev().cloned().map(Neg::neg).collect())
-    }
-}
-
-impl FromStr for Algorythm {
-    type Err = Box<dyn Error>;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        s.split(' ')
-            .filter(|s| !s.is_empty())
-            .map(str::parse::<Step>)
-            .collect::<Result<Vec<Step>, Self::Err>>()
-            .map(Algorythm)
-    }
-}
-
 fn normalize_rotation(rotation: i8) -> u8 {
     rotation.rem_euclid(4) as u8
 }
@@ -673,40 +385,29 @@ impl<const N: usize> Cube<N> {
         *RefCell::borrow(&self.faces[face].face_data)
     }
 
-    pub fn apply_step(&self, step: Step) {
-        let movement = transform_movement::<N>(step.movement);
-        //let count = step.count;
-        //match step.movement {
-        //Movement::Rotation(rot) => self.rotate_face(rot, count),
-        //Movement::DoubleRotation(rot) => self.rotate_double(rot, count),
-        //Movement::MiddleRotation(rot) => self.rotate_middle(rot, count),
-        //Movement::CubeRotation(rot) => self.rotate_cube(rot, count),
-        //}}
+    pub fn apply_notation_step(&self, step: NotationStep) {
+        self.apply_step(step.into());
+    }
 
-        let invert_count = match step.movement {
-            Movement::Rotation(face) | Movement::DoubleRotation(face) => match face {
-                FaceId::Left | FaceId::Back | FaceId::Down => -1,
-                _ => 1,
-            },
-            Movement::MiddleRotation(_) => -1,
-            _ => 1,
-        };
-        let count = step.count * invert_count;
+    pub fn apply_notation_algorythm(&self, algorythm: &NotationAlgorythm) {
+        self.apply_algorythm(&algorythm.clone().into());
+    }
 
-        let face = match movement.axis {
+    pub fn apply_step(&self, step: Step<N>) {
+        let face = match step.movement.axis {
             Axis::Y => FaceId::Up,
             Axis::X => FaceId::Right,
             Axis::Z => FaceId::Front,
         };
 
-        for (i, &v) in movement.layers.iter().enumerate() {
+        for (i, &v) in step.movement.layers.iter().enumerate() {
             if v {
-                self.faces[face].rotate(count, i);
+                self.faces[face].rotate(step.count, i);
             }
         }
     }
 
-    pub fn apply_algorythm(&self, algorythm: &Algorythm) {
+    pub fn apply_algorythm(&self, algorythm: &Algorythm<N>) {
         for &step in &algorythm.0 {
             self.apply_step(step);
         }
@@ -752,12 +453,14 @@ impl<const N: usize> Cube<N> {
 
 #[cfg(test)]
 mod tests {
+    use crate::step::Movement;
+
     use super::*;
 
     #[test]
     fn cube_parse() {
         let cube: Cube<3> = Cube::solved();
-        cube.apply_step(Step::new(Movement::Rotation(FaceId::Up), 1));
+        cube.apply_notation_step(NotationStep::new(Movement::Rotation(FaceId::Up), 1));
         assert_eq!(
             cube.get_face(FaceId::Up),
             FaceData::from_str("uuu\nuuu\nuuu").unwrap()
@@ -770,49 +473,50 @@ mod tests {
 
     #[test]
     fn parse_algorythms() {
-        let algorythm: Algorythm = " R R'   L L'   ".parse().unwrap();
+        let algorythm: NotationAlgorythm = " R R'   L L'   ".parse().unwrap();
 
         assert_eq!(
             algorythm,
-            Algorythm(vec![
-                Step::new(Movement::Rotation(FaceId::Right), 1),
-                Step::new(Movement::Rotation(FaceId::Right), -1),
-                Step::new(Movement::Rotation(FaceId::Left), 1),
-                Step::new(Movement::Rotation(FaceId::Left), -1),
+            NotationAlgorythm(vec![
+                NotationStep::new(Movement::Rotation(FaceId::Right), 1),
+                NotationStep::new(Movement::Rotation(FaceId::Right), -1),
+                NotationStep::new(Movement::Rotation(FaceId::Left), 1),
+                NotationStep::new(Movement::Rotation(FaceId::Left), -1),
             ])
         );
     }
 
     #[test]
     fn simple_algorythm() {
-        let algorythm: Algorythm = "R U".parse().unwrap();
+        let algorythm: NotationAlgorythm = "R U".parse().unwrap();
 
         let reversed = -algorythm.clone();
 
         let cube: Cube<3> = Cube::solved();
 
-        cube.apply_algorythm(&algorythm);
+        cube.apply_algorythm(&algorythm.into());
         assert!(!cube.is_solved());
 
-        cube.apply_algorythm(&reversed);
+        cube.apply_algorythm(&reversed.into());
         assert!(cube.is_solved());
     }
 
     #[test]
     fn algorythm_and_reverse() {
-        let algorythm: Algorythm =
+        let algorythm: Algorythm<3> =
             "B2 D' B L' F2 U D' L' D R2 L' F2 B2 L2 D F' L2 U' B2 F D2 R D L2 U"
-                .parse()
-                .unwrap();
+                .parse::<NotationAlgorythm>()
+                .unwrap()
+                .into();
 
         let reversed = -algorythm.clone();
 
         let cube: Cube<3> = Cube::solved();
 
-        cube.apply_algorythm(&algorythm);
+        cube.apply_algorythm(&algorythm.into());
         assert!(!cube.is_solved());
 
-        cube.apply_algorythm(&reversed);
+        cube.apply_algorythm(&reversed.into());
         assert!(cube.is_solved());
     }
 
@@ -832,7 +536,7 @@ mod tests {
             ])
         );
 
-        cube.apply_step(Step::new(Movement::Rotation(FaceId::Right), 1));
+        cube.apply_step(NotationStep::new(Movement::Rotation(FaceId::Right), 1).into());
 
         let corner = cube.find_corner([FaceId::Up, FaceId::Right, FaceId::Front]);
         assert!(corner.is_some());
@@ -859,7 +563,7 @@ mod tests {
             HashSet::from_iter([(FaceId::Up, 1, 2), (FaceId::Right, 0, 1)])
         );
 
-        cube.apply_step(Step::new(Movement::Rotation(FaceId::Right), 1));
+        cube.apply_step(NotationStep::new(Movement::Rotation(FaceId::Right), 1).into());
 
         let edge = cube.find_edge([FaceId::Up, FaceId::Right]);
         assert!(edge.is_some());

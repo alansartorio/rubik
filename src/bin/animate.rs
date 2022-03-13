@@ -8,8 +8,9 @@ use std::{
 use glium::{glutin, Surface};
 use rubik::{
     bound_cube::{BoundCube, BoundCubeTrait},
-    cube::{Cube, Step},
+    cube::Cube,
     helper,
+    step::NotationStep,
 };
 use stopwatch::Stopwatch;
 
@@ -33,13 +34,13 @@ fn main() {
 
     let mut cube = BoundCube::from_cube(&display, cube);
 
-    let (tx, rx) = channel::<Step>();
+    let (tx, rx) = channel::<NotationStep>();
 
     thread::spawn(move || {
         let stdin = io::stdin();
         let lines = stdin.lock().lines().map(|line| line.unwrap());
 
-        let steps = lines.map(|line| line.parse::<Step>().unwrap());
+        let steps = lines.map(|line| line.parse::<NotationStep>().unwrap());
 
         for step in steps {
             tx.send(step).unwrap();
@@ -54,7 +55,7 @@ fn main() {
         frame_timer.restart();
 
         if let Ok(step) = rx.try_recv() {
-            cube.apply_step(step);
+            cube.apply_notation_step(step);
         }
         cube.tick(dt);
 

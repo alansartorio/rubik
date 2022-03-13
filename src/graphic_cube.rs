@@ -8,7 +8,7 @@ use glium::{
     uniform, Frame, Program, Surface, VertexBuffer,
 };
 
-use crate::cube::{self, Cube};
+use crate::{cube::Cube, step::FaceId};
 
 #[derive(Copy, Clone, Debug)]
 struct Attr {
@@ -165,12 +165,12 @@ impl<const N: usize> GraphicCube<N> {
         for (attr, color) in Iterator::zip(mapping.iter_mut(), cube.flatten_stickers()) {
             attr.color = match color.0 {
                 Some(face) => match face {
-                    cube::FaceId::Up => colors::RED,
-                    cube::FaceId::Down => colors::ORANGE,
-                    cube::FaceId::Right => colors::WHITE,
-                    cube::FaceId::Left => colors::YELLOW,
-                    cube::FaceId::Front => colors::BLUE,
-                    cube::FaceId::Back => colors::GREEN,
+                    FaceId::Up => colors::RED,
+                    FaceId::Down => colors::ORANGE,
+                    FaceId::Right => colors::WHITE,
+                    FaceId::Left => colors::YELLOW,
+                    FaceId::Front => colors::BLUE,
+                    FaceId::Back => colors::GREEN,
                 },
                 None => colors::BLACK,
             };

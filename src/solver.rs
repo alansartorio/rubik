@@ -1,4 +1,5 @@
-use crate::cube::{Algorythm, Cube, Step};
+use crate::cube::Cube;
+use crate::step::{NotationAlgorythm as Algorythm, NotationStep as Step};
 
 fn depth_solve(cube: &Cube<3>, depth: u32) -> Option<Vec<Step>> {
     let valid_steps: Vec<Step> = "R R' L L' U U' F F' D D' B B'"
@@ -12,7 +13,7 @@ fn depth_solve(cube: &Cube<3>, depth: u32) -> Option<Vec<Step>> {
 
     for step in valid_steps {
         let copy = cube.clone();
-        copy.apply_step(step);
+        copy.apply_notation_step(step);
         if let Some(mut algorythm) = depth_solve(&copy, depth - 1) {
             algorythm.insert(0, step);
             return Some(algorythm);
@@ -37,6 +38,7 @@ pub fn solve(cube: &Cube<3>) -> Algorythm {
 mod tests {
     use super::*;
     use crate::cube::Cube;
+    use crate::step::NotationStep;
 
     #[test]
     fn test_solve() {
@@ -44,12 +46,12 @@ mod tests {
 
         assert_eq!(solve(&cube), Algorythm(vec![]));
 
-        cube.apply_step("R".parse().unwrap());
+        cube.apply_step("R".parse::<NotationStep>().unwrap().into());
 
         assert_eq!(solve(&cube), "R'".parse().unwrap());
 
-        cube.apply_step("R".parse().unwrap());
-        cube.apply_algorythm(&solve(&cube));
+        cube.apply_step("R".parse::<NotationStep>().unwrap().into());
+        cube.apply_algorythm(&solve(&cube).into());
 
         assert!(cube.is_solved());
     }

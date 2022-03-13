@@ -14,8 +14,11 @@ use glium_glyph::{
     },
     GlyphBrush,
 };
-use rubik::bound_cube::{BoundCube, BoundCubeTrait};
-use rubik::cube::{Movement, Step};
+use rubik::step::Movement;
+use rubik::{
+    bound_cube::{BoundCube, BoundCubeTrait},
+    step::NotationStep,
+};
 
 use stopwatch::Stopwatch;
 
@@ -192,13 +195,13 @@ fn main() {
                                     };
 
                                     if let Some(step) = movement {
-                                        let step: Step = step.parse().unwrap();
+                                        let step: NotationStep = step.parse().unwrap();
                                         let is_rotation = match step.movement {
                                             Movement::CubeRotation(_) => false,
                                             _ => true,
                                         };
 
-                                        cube.apply_step(step);
+                                        cube.apply_notation_step(step);
                                         if is_rotation && !timer.is_running() && timer_enabled {
                                             timer.restart();
                                         }
