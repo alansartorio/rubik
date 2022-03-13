@@ -1,10 +1,10 @@
-use std::error::Error;
-use std::str::FromStr;
 use bimap::BiMap;
 use enum_map::Enum;
 use rand::distributions::uniform::SampleRange;
 use rand::seq::SliceRandom;
+use std::error::Error;
 use std::ops::Neg;
+use std::str::FromStr;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
@@ -400,7 +400,6 @@ pub struct Step<const N: usize> {
     pub count: i8,
 }
 
-
 impl<const N: usize> Neg for Step<N> {
     type Output = Self;
 
@@ -411,7 +410,6 @@ impl<const N: usize> Neg for Step<N> {
         }
     }
 }
-
 
 #[derive(Clone)]
 pub struct Algorythm<const N: usize>(pub Vec<Step<N>>);
