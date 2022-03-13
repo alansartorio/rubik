@@ -2,19 +2,51 @@ use std::{
     io::{self, BufRead},
     sync::mpsc::channel,
     thread,
-    time::Duration,
+    time::Duration, env,
 };
 
-use glium::{glutin, Surface};
+use glium::{glutin, Surface, backend::Facade};
 use rubik::{
     bound_cube::{BoundCube, BoundCubeTrait},
-    cube::Cube,
     helper,
     step::NotationStep,
 };
 use stopwatch::Stopwatch;
 
+#[rustfmt::skip]
+pub fn parse_cube<F: Facade>(facade: &F, cube_size: usize, cube_string: String) -> Box<dyn BoundCubeTrait> {
+    macro_rules! impl_cube {
+        ($( $size:expr ),*) => {
+            match cube_size {
+                $($size => Box::new({
+                    let cube = cube_string.parse().unwrap();
+                    BoundCube::<$size>::from_cube(facade, cube)
+                }),)+
+                _ => panic!()
+            }
+        };
+    }
+
+    impl_cube!(
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 
+        10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+        20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+        30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
+        40, 41, 42, 43, 44, 45, 46, 47, 48, 49,
+        50, 51, 52, 53, 54, 55, 56, 57, 58, 59
+    )
+}
+
+
 fn main() {
+    let args: Vec<String> = env::args().collect();
+    let cube_size = {
+        if args.len() == 2 {
+            args[1].parse().expect("First argument must be cube size (integer).")
+        } else {
+            3
+        }
+    };
     let event_loop = glutin::event_loop::EventLoop::new();
     let wb = glutin::window::WindowBuilder::new();
     let cb = glutin::ContextBuilder::new()
@@ -30,9 +62,7 @@ fn main() {
         .collect::<Vec<_>>()
         .join("\n");
 
-    let cube: Cube<3> = cube_string.parse().unwrap();
-
-    let mut cube = BoundCube::from_cube(&display, cube);
+    let mut cube = parse_cube(&display, cube_size, cube_string);
 
     let (tx, rx) = channel::<NotationStep>();
 
