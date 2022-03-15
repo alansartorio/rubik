@@ -72,6 +72,7 @@ fn main() {
 
         let steps = lines.map(|line| line.parse::<NotationStep>().unwrap());
 
+        thread::sleep(Duration::from_millis(1000));
         for step in steps {
             tx.send(step).unwrap();
             thread::sleep(Duration::from_millis(200));
