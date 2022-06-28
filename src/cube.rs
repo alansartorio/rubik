@@ -91,9 +91,11 @@ impl<const N: usize> FaceData<N> {
     fn is_solved(&self) -> bool {
         let stickers = self.flatten_stickers();
         let mut iter = stickers.iter().filter_map(|s| s.0);
-        let sticker = iter.next().unwrap();
-
-        iter.all(|s| s == sticker)
+        if let Some(sticker) = iter.next() {
+            iter.all(|s| s == sticker)
+        } else {
+            true
+        }
     }
 }
 impl<const N: usize> FromStr for FaceData<N> {
