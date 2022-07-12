@@ -1,0 +1,175 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'rubik'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=rubik"
+                ],
+                "filter": {
+                    "name": "rubik",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'solver'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=solver",
+                    "--package=rubik"
+                ],
+                "filter": {
+                    "name": "solver",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'solver'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=solver",
+                    "--package=rubik"
+                ],
+                "filter": {
+                    "name": "solver",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'scrambler'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=scrambler",
+                    "--package=rubik"
+                ],
+                "filter": {
+                    "name": "scrambler",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'scrambler'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=scrambler",
+                    "--package=rubik"
+                ],
+                "filter": {
+                    "name": "scrambler",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'animate'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=animate",
+                    "--package=rubik"
+                ],
+                "filter": {
+                    "name": "animate",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'animate'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=animate",
+                    "--package=rubik"
+                ],
+                "filter": {
+                    "name": "animate",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'rubik'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=rubik",
+                    "--package=rubik"
+                ],
+                "filter": {
+                    "name": "rubik",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'rubik'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=rubik",
+                    "--package=rubik"
+                ],
+                "filter": {
+                    "name": "rubik",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
