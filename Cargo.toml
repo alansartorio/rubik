@@ -25,11 +25,11 @@ path = "src/bin/simulator.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-glium = "0.30.2"
+glium = "*"
 cgmath = "*"
 enum-map = "*"
 rand = "*"
-glium-glyph = "*"
+glium-glyph = { git = "https://github.com/est31/glium-glyph.git" }
 stopwatch = "*"
 strum = "*"
 strum_macros = "*"

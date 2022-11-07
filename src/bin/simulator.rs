@@ -1,6 +1,4 @@
 #![windows_subsystem = "windows"]
-extern crate glium;
-extern crate glium_glyph;
 
 use std::{borrow::Borrow, env};
 
