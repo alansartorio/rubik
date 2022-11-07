@@ -74,9 +74,9 @@ impl<const N: usize> FaceData<N> {
     fn rotate(&mut self) -> &mut Self {
         let tiles = &mut self.tiles;
         let tmp = *tiles;
-        for y in 0..N {
-            for x in 0..N {
-                tiles[y][x] = tmp[x][N - 1 - y]
+        for (y, row) in tiles.iter_mut().enumerate() {
+            for (x, cell) in row.iter_mut().enumerate() {
+                *cell = tmp[x][N - 1 - y]
             }
         }
 
@@ -107,7 +107,7 @@ impl<const N: usize> FromStr for FaceData<N> {
                 .map(|row| {
                     row.trim()
                         .chars()
-                        .map(|c| StickerType::try_from(c))
+                        .map(StickerType::try_from)
                         .collect::<Result<Vec<_>, _>>()
                         .map_err::<Box<dyn Error>, _>(|e| e.to_string().into())?
                         .try_into()
@@ -515,10 +515,10 @@ mod tests {
 
         let cube: Cube<3> = Cube::solved();
 
-        cube.apply_algorythm(&algorythm.into());
+        cube.apply_algorythm(&algorythm);
         assert!(!cube.is_solved());
 
-        cube.apply_algorythm(&reversed.into());
+        cube.apply_algorythm(&reversed);
         assert!(cube.is_solved());
     }
 

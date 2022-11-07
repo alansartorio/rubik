@@ -20,7 +20,7 @@ fn depth_solve(cube: &Cube<3>, depth: u32) -> Option<Vec<Step>> {
         }
     }
 
-    return None;
+    None
 }
 
 pub fn solve(cube: &Cube<3>) -> Algorythm {
@@ -28,7 +28,7 @@ pub fn solve(cube: &Cube<3>) -> Algorythm {
         (0..)
             .find_map(|depth| {
                 eprintln!("Searching depth: {}", depth);
-                depth_solve(&cube, depth)
+                depth_solve(cube, depth)
             })
             .unwrap(),
     )

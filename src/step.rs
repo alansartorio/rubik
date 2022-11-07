@@ -53,8 +53,8 @@ pub struct NewMovement<const N: usize> {
     pub layers: [bool; N],
 }
 
-impl<const N: usize> Into<NewMovement<N>> for Movement {
-    fn into(self) -> NewMovement<N> {
+impl<const N: usize> From<Movement> for NewMovement<N> {
+    fn from(movement: Movement) -> Self {
         let start = {
             let mut a = [false; N];
             a[0] = true;
@@ -92,7 +92,7 @@ impl<const N: usize> Into<NewMovement<N>> for Movement {
         };
         let all = [true; N];
 
-        match self {
+        match movement {
             Movement::Rotation(face) => NewMovement {
                 axis: match face {
                     FaceId::Up | FaceId::Down => Axis::Y,
@@ -300,8 +300,8 @@ impl FromStr for NotationStep {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         MAPPING
             .get_by_left(s)
-            .map(|&m| m)
-            .ok_or("Invalid Step String".into())
+            .copied()
+            .ok_or_else(|| "Invalid Step String".into())
     }
 }
 
@@ -330,9 +330,9 @@ impl ToString for NotationAlgorythm {
     }
 }
 
-impl<const N: usize> Into<Step<N>> for NotationStep {
-    fn into(self) -> Step<N> {
-        let invert_count = match self.movement {
+impl<const N: usize> From<NotationStep> for Step<N> {
+    fn from(other: NotationStep) -> Self {
+        let invert_count = match other.movement {
             Movement::Rotation(face) | Movement::DoubleRotation(face) => match face {
                 FaceId::Left | FaceId::Back | FaceId::Down => -1,
                 _ => 1,
@@ -340,17 +340,17 @@ impl<const N: usize> Into<Step<N>> for NotationStep {
             Movement::MiddleRotation(_) => -1,
             _ => 1,
         };
-        let count = self.count * invert_count;
+        let count = other.count * invert_count;
         Step::<N> {
-            movement: self.movement.into(),
+            movement: other.movement.into(),
             count,
         }
     }
 }
 
-impl<const N: usize> Into<Algorythm<N>> for NotationAlgorythm {
-    fn into(self) -> Algorythm<N> {
-        Algorythm(self.0.iter().cloned().map(Into::into).collect())
+impl<const N: usize> From<NotationAlgorythm> for Algorythm<N> {
+    fn from(other: NotationAlgorythm) -> Self {
+        Algorythm(other.0.iter().cloned().map(Into::into).collect())
     }
 }
 

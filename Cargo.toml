@@ -1,5 +1,10 @@
 [package]
 name = "rubik"
+authors = ["Alan Sartorio"]
+description = "A keyboard driven virtual Rubik's cube made in rust."
+homepage = "https://github.com/alansartorio/rubik"
+repository = "https://github.com/alansartorio/rubik"
+license = "MIT"
 version = "1.2.0"
 edition = "2018"
 default-run = "rubik"

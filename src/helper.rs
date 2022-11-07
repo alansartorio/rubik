@@ -16,10 +16,7 @@ where
 
     event_loop.run(move |event, _, control_flow| {
         let (run_callback, exit) = match event.to_static() {
-            Some(Event::NewEvents(cause)) => match cause {
-                //StartCause::ResumeTimeReached { .. } | StartCause::Init => (true, false),
-                _ => (false, false),
-            },
+            Some(Event::NewEvents(_cause)) => (false, false),
             Some(glutin::event::Event::MainEventsCleared) => (true, false),
             Some(glutin::event::Event::WindowEvent {
                 event: glium::glutin::event::WindowEvent::CloseRequested,

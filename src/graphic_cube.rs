@@ -183,10 +183,10 @@ impl<const N: usize> GraphicCube<N> {
         for (i, attr) in Iterator::enumerate(mapping.iter_mut()) {
             if marked(i) {
                 let vec: [i8; 3] = rot.into();
-                attr.rotation_from = vec.map(|v| v as f32 * PI / 2.).into();
+                attr.rotation_from = vec.map(|v| v as f32 * PI / 2.);
             } else {
                 let animation_lerp = self.animation_lerp;
-                let current = attr.rotation_from.map(move |v| v * animation_lerp).into();
+                let current = attr.rotation_from.map(move |v| v * animation_lerp);
                 attr.rotation_from = current;
             }
         }
