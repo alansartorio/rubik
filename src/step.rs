@@ -1,5 +1,6 @@
 use bimap::BiMap;
 use enum_map::Enum;
+use lazy_static::lazy_static;
 use rand::distributions::uniform::SampleRange;
 use rand::seq::SliceRandom;
 use std::error::Error;

@@ -5,10 +5,10 @@ use std::{borrow::Borrow, env};
 use glium::Display;
 use glium_glyph::{
     glyph_brush::{
-        rusttype::{self, Font},
-        BuiltInLineBreaker, HorizontalAlign, Layout, Section, VerticalAlign,
+        ab_glyph::{FontRef, PxScale},
+        BuiltInLineBreaker, HorizontalAlign, Layout, Section, Text, VerticalAlign,
     },
-    GlyphBrush,
+    GlyphBrushBuilder,
 };
 use rubik::step::Movement;
 use rubik::{bound_cube::BoundCubeTrait, step::NotationStep};
@@ -27,14 +27,15 @@ fn main() {
     let event_loop = glutin::event_loop::EventLoop::new();
     let wb = glutin::window::WindowBuilder::new();
     let cb = glutin::ContextBuilder::new()
-        .with_depth_buffer(24)
+        //.with_depth_buffer(24)
         .with_multisampling(4)
-        .with_vsync(true);
+        //.with_vsync(true);
+        ;
     let display = glium::Display::new(wb, cb, &event_loop).unwrap();
 
     let font_data = include_bytes!("../../fonts/Gidole-Regular.ttf");
-    let font = Font::from_bytes(font_data).unwrap();
-    let mut glyph_brush = GlyphBrush::new(&display, [font]);
+    let font = FontRef::try_from_slice(font_data).unwrap();
+    let mut glyph_brush = GlyphBrushBuilder::using_font(font).build(&display);
 
     let mut cube_size = 3;
     let mut cube = create_cube(&display, cube_size);
@@ -49,14 +50,16 @@ fn main() {
         move |cube: &dyn BoundCubeTrait, timer: &Stopwatch, display: &Display, dt: f32| {
             let (width, height) = display.get_framebuffer_dimensions();
 
-            glyph_brush.queue(Section {
-                text: format!("{:0.2}", timer.elapsed().as_secs_f32()).as_str(),
-                bounds: (width as f32, height as f32 / 2.0),
-                screen_position: (50., 50.),
-                color: [1., 1., 1., 1.],
-                scale: rusttype::Scale::uniform(60.),
-                ..Section::default()
-            });
+            glyph_brush.queue(
+                Section::default()
+                    .add_text(
+                        Text::new(&format!("{:0.2}", timer.elapsed().as_secs_f32()))
+                            .with_color([1., 1., 1., 1.])
+                            .with_scale(PxScale::from(60.)),
+                    )
+                    .with_bounds((width as f32, height as f32 / 2.0))
+                    .with_screen_position((50., 50.)),
+            );
 
             if env::var("SHOW_FPS").map(|var| var == "1").unwrap_or(false) {
                 delta_times.push(dt);
@@ -65,24 +68,26 @@ fn main() {
                 }
                 let mean_delta = delta_times.iter().sum::<f32>() / delta_times.len() as f32;
 
-                glyph_brush.queue(Section {
-                    text: format!("{:0.2}", 1. / mean_delta).as_str(),
-                    bounds: (200., height as f32 / 2.0),
-                    screen_position: (width as f32 - 50., 50.),
-                    color: [1., 1., 1., 1.],
-                    scale: rusttype::Scale::uniform(60.),
-                    layout: Layout::SingleLine {
-                        line_breaker: BuiltInLineBreaker::default(),
-                        h_align: HorizontalAlign::Right,
-                        v_align: VerticalAlign::Top,
-                    },
-                    ..Section::default()
-                });
+                glyph_brush.queue(
+                    Section::default()
+                        .add_text(
+                            Text::new(&format!("{:0.2}", 1. / mean_delta))
+                                .with_color([1., 1., 1., 1.])
+                                .with_scale(PxScale::from(60.)),
+                        )
+                        .with_bounds((200., height as f32 / 2.0))
+                        .with_screen_position((width as f32 - 50., 50.))
+                        .with_layout(Layout::SingleLine {
+                            line_breaker: BuiltInLineBreaker::default(),
+                            h_align: HorizontalAlign::Right,
+                            v_align: VerticalAlign::Top,
+                        }),
+                );
             }
 
             let mut target = display.draw();
 
-            target.clear_color_and_depth((0.0, 0.0, 0.0, 0.0), 1.0);
+            target.clear_color_and_depth((0.0, 0.0, 0.0, 1.0), 1.0);
             glyph_brush.draw_queued(display, &mut target);
 
             cube.draw(&mut target);
@@ -177,7 +182,8 @@ fn main() {
 
                             if let Some(step) = movement {
                                 let step: NotationStep = step.parse().unwrap();
-                                let is_rotation = !matches!(step.movement, Movement::CubeRotation(_));
+                                let is_rotation =
+                                    !matches!(step.movement, Movement::CubeRotation(_));
 
                                 cube.apply_notation_step(step);
                                 if is_rotation && !timer.is_running() && timer_enabled {
