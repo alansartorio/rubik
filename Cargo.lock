@@ -581,7 +581,8 @@ dependencies = [
 [[package]]
 name = "glium-glyph"
 version = "0.14.0"
-source = "git+https://github.com/est31/glium-glyph.git#d75ba2712a48f59a0a2e4e59de0047beb968054f"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "112f6eef647aa93b3e5f3778fd67a491d98fcbe69222564f049e67e52e19c654"
 dependencies = [
  "glium",
  "glyph_brush",

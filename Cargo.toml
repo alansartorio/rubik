@@ -29,7 +29,7 @@ glium = "*"
 cgmath = "*"
 enum-map = "*"
 rand = "*"
-glium-glyph = { git = "https://github.com/est31/glium-glyph.git" }
+glium-glyph = "*"
 stopwatch = "*"
 strum = "*"
 strum_macros = "*"
