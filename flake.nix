@@ -26,9 +26,14 @@
         };
         rustVersion = pkgs.rust-bin.stable."1.74.0"; # Choose your desired Rust version
         runtimeDependencies = with pkgs; [
-          wayland
-          libxkbcommon
           libGL
+
+          wayland
+
+          xorg.libX11
+          xorg.libXcursor
+          xorg.libXrandr
+          xorg.libXi
         ];
         buildDependencies = with pkgs; [
           zlib
