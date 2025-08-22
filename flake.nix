@@ -17,9 +17,12 @@
           inherit system;
           overlays = [ rust-overlay.overlays.default ];
         };
-        rustVersion =
-          pkgs.rust-bin.stable."1.74.0"; # Choose your desired Rust version
-        runtimeDependencies = with pkgs; [ wayland libxkbcommon ];
+        rustVersion = pkgs.rust-bin.stable."1.74.0"; # Choose your desired Rust version
+        runtimeDependencies = with pkgs; [
+          wayland
+          libxkbcommon
+          libGL
+        ];
         buildDependencies = with pkgs; [
           zlib
           bzip2
@@ -55,8 +58,14 @@
 
         devShells = {
           default = pkgs.mkShell {
-            buildInputs = [ rustVersion.default ];
-            LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath buildDependencies;
+            buildInputs =
+              [
+                rustVersion.default
+                pkgs.pkg-config
+              ]
+              ++ buildDependencies
+              ++ runtimeDependencies;
+            LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (buildDependencies ++ runtimeDependencies);
           };
           try = pkgs.mkShell { buildInputs = [ packages.default ]; };
         };
