@@ -10,8 +10,15 @@
     };
   };
 
-  outputs = { self, flake-utils, rust-overlay, nixpkgs }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      self,
+      flake-utils,
+      rust-overlay,
+      nixpkgs,
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         pkgs = import nixpkgs {
           inherit system;
@@ -32,7 +39,8 @@
           fontconfig
         ];
         rpath = with pkgs; lib.makeLibraryPath runtimeDependencies;
-      in rec {
+      in
+      rec {
         packages.default = pkgs.rustPlatform.buildRustPackage {
           version = "0.1.0";
           pname = "rubik";
@@ -48,9 +56,15 @@
           '';
 
           src = pkgs.lib.cleanSourceWith {
-            filter = name: type:
-              let baseName = baseNameOf (toString name);
-              in !(builtins.elem baseName [ "flake.nix" "flake.lock" ]);
+            filter =
+              name: type:
+              let
+                baseName = baseNameOf (toString name);
+              in
+              !(builtins.elem baseName [
+                "flake.nix"
+                "flake.lock"
+              ]);
             src = pkgs.lib.cleanSource ./.;
             name = "rubik-src";
           };
@@ -69,5 +83,6 @@
           };
           try = pkgs.mkShell { buildInputs = [ packages.default ]; };
         };
-      });
+      }
+    );
 }
