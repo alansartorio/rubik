@@ -28,6 +28,7 @@
         runtimeDependencies = with pkgs; [
           libGL
 
+          libxkbcommon
           wayland
 
           xorg.libX11
