@@ -1,48 +1,64 @@
-use glium::glutin;
-use glium::glutin::event::Event;
-use glium::glutin::event_loop::ControlFlow;
-use glium::glutin::event_loop::EventLoop;
+use glium::winit::application::ApplicationHandler;
+use glium::winit::event::WindowEvent;
+use glium::winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
+use glium::winit::window::{Window, WindowId};
 
 pub enum Action {
     Stop,
     Continue,
 }
 
-pub fn run_loop<F>(event_loop: EventLoop<()>, mut callback: F)
+struct LoopApp<F>
 where
-    F: 'static + FnMut(&Vec<Event<'_, ()>>) -> Action,
+    F: FnMut(&Vec<WindowEvent>) -> Action,
 {
-    let mut events_buffer = Vec::new();
+    window: Window,
+    events_buffer: Vec<WindowEvent>,
+    callback: F,
+}
 
-    event_loop.run(move |event, _, control_flow| {
-        let (run_callback, exit) = match event.to_static() {
-            Some(Event::NewEvents(_cause)) => (false, false),
-            Some(glutin::event::Event::MainEventsCleared) => (true, false),
-            Some(glutin::event::Event::WindowEvent {
-                event: glium::glutin::event::WindowEvent::CloseRequested,
-                ..
-            }) => (false, true),
-            Some(event) => {
-                events_buffer.push(event);
-                (false, false)
+impl<F> ApplicationHandler for LoopApp<F>
+where
+    F: FnMut(&Vec<WindowEvent>) -> Action,
+{
+    fn resumed(&mut self, _event_loop: &ActiveEventLoop) {}
+
+    fn window_event(
+        &mut self,
+        event_loop: &ActiveEventLoop,
+        _window_id: WindowId,
+        event: WindowEvent,
+    ) {
+        match event {
+            WindowEvent::CloseRequested => event_loop.exit(),
+            WindowEvent::RedrawRequested => {
+                let action = (self.callback)(&self.events_buffer);
+                self.events_buffer.clear();
+
+                if let Action::Stop = action {
+                    event_loop.exit();
+                }
             }
-            None => (false, false),
-        };
-
-        let action = if run_callback {
-            let action = callback(&events_buffer);
-            events_buffer.clear();
-
-            action
-        } else if exit {
-            Action::Stop
-        } else {
-            Action::Continue
-        };
-
-        match action {
-            Action::Continue => *control_flow = ControlFlow::Poll,
-            Action::Stop => *control_flow = ControlFlow::Exit,
+            event => self.events_buffer.push(event),
         }
-    });
+    }
+
+    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+        self.window.request_redraw();
+    }
+}
+
+pub fn run_loop<F>(event_loop: EventLoop<()>, window: Window, callback: F)
+where
+    F: FnMut(&Vec<WindowEvent>) -> Action,
+{
+    event_loop.set_control_flow(ControlFlow::Poll);
+
+    let mut app = LoopApp {
+        window,
+        events_buffer: Vec::new(),
+        callback,
+    };
+
+    event_loop.run_app(&mut app).unwrap();
 }

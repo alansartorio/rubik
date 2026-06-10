@@ -17,10 +17,14 @@ struct Attr {
     rotation_from: [f32; 3],
 }
 
+implement_vertex!(Attr, model_to_world, color, rotation_from);
+
 #[derive(Copy, Clone)]
 struct Vertex {
     position: [f32; 2],
 }
+
+implement_vertex!(Vertex, position);
 
 pub struct GraphicCube<const N: usize> {
     view: [[f32; 4]; 4],
@@ -61,8 +65,6 @@ impl<const N: usize> GraphicCube<N> {
             .unwrap(),
             indices: glium::index::NoIndices(PrimitiveType::TriangleFan),
             vertex_buffer: {
-                implement_vertex!(Vertex, position);
-
                 glium::VertexBuffer::new(
                     facade,
                     &[
@@ -83,8 +85,6 @@ impl<const N: usize> GraphicCube<N> {
                 .unwrap()
             },
             per_instance: {
-                implement_vertex!(Attr, model_to_world, color, rotation_from);
-
                 //let colors = [
                 //[colors::RED, colors::ORANGE, colors::WHITE],
                 //[colors::GREEN, colors::YELLOW, colors::BLUE],

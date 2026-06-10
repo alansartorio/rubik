@@ -24,17 +24,17 @@
           inherit system;
           overlays = [ rust-overlay.overlays.default ];
         };
-        rustVersion = pkgs.rust-bin.stable."1.74.0"; # Choose your desired Rust version
+        rustVersion = pkgs.rust-bin.stable."1.96.0"; # Choose your desired Rust version
         runtimeDependencies = with pkgs; [
           libGL
 
           libxkbcommon
           wayland
 
-          xorg.libX11
-          xorg.libXcursor
-          xorg.libXrandr
-          xorg.libXi
+          libx11
+          libxcursor
+          libxrandr
+          libxi
         ];
         buildDependencies = with pkgs; [
           zlib
@@ -50,7 +50,12 @@
         packages.default = pkgs.rustPlatform.buildRustPackage {
           version = "0.1.0";
           pname = "rubik";
-          cargoLock.lockFile = ./Cargo.lock;
+          cargoLock = {
+            lockFile = ./Cargo.lock;
+            outputHashes = {
+              "glium-glyph-0.14.0" = "sha256-zKB+lJYN4Te2xNesqhFtVfSop+N15J/P+36CCrKki0o=";
+            };
+          };
           nativeBuildInputs = with pkgs; [
             cmake
             rustVersion.default

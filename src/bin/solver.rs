@@ -3,7 +3,8 @@ use std::{
     io::{self, Read},
 };
 
-use lazy_static::{__Deref, lazy_static};
+use lazy_static::lazy_static;
+use std::ops::Deref;
 use rubik::{
     cube::Cube,
     solver::solve,

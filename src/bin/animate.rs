@@ -5,7 +5,11 @@ use std::{
     time::Duration, env,
 };
 
-use glium::{glutin, Surface, backend::Facade};
+use glium::backend::glutin::SimpleWindowBuilder;
+use glium::glutin::config::ConfigTemplateBuilder;
+use glium::winit::event::WindowEvent;
+use glium::winit::event_loop::EventLoop;
+use glium::{backend::Facade, Surface};
 use rubik::{
     bound_cube::{BoundCube, BoundCubeTrait},
     helper,
@@ -47,13 +51,14 @@ fn main() {
             3
         }
     };
-    let event_loop = glutin::event_loop::EventLoop::new();
-    let wb = glutin::window::WindowBuilder::new();
-    let cb = glutin::ContextBuilder::new()
-        .with_depth_buffer(24)
-        .with_multisampling(4)
-        .with_vsync(true);
-    let display = glium::Display::new(wb, cb, &event_loop).unwrap();
+    let event_loop = EventLoop::new().unwrap();
+    let (window, display) = SimpleWindowBuilder::new()
+        .with_config_template_builder(
+            ConfigTemplateBuilder::new()
+                .with_multisampling(4)
+                .with_depth_size(24),
+        )
+        .build(&event_loop);
 
     let stdin = io::stdin();
     let lines = stdin.lock().lines().map(|line| line.unwrap());
@@ -81,9 +86,15 @@ fn main() {
 
     let mut frame_timer = Stopwatch::new();
 
-    helper::run_loop(event_loop, move |_| {
+    helper::run_loop(event_loop, window, move |events| {
         let dt = frame_timer.elapsed().as_secs_f32();
         frame_timer.restart();
+
+        for event in events {
+            if let WindowEvent::Resized(new_size) = event {
+                display.resize((*new_size).into());
+            }
+        }
 
         if let Ok(step) = rx.try_recv() {
             cube.apply_notation_step(step);

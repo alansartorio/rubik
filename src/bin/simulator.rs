@@ -2,6 +2,8 @@
 
 use std::{borrow::Borrow, env};
 
+use glium::glutin::config::ConfigTemplateBuilder;
+use glium::glutin::surface::WindowSurface;
 use glium::Display;
 use glium_glyph::{
     glyph_brush::{
@@ -15,23 +17,26 @@ use rubik::{bound_cube::BoundCubeTrait, step::NotationStep};
 
 use stopwatch::Stopwatch;
 
-use glium::glutin::event::VirtualKeyCode;
+use glium::backend::glutin::SimpleWindowBuilder;
+use glium::winit::event::{ElementState, WindowEvent};
+use glium::winit::event_loop::EventLoop;
+use glium::winit::keyboard::{KeyCode, PhysicalKey};
 #[allow(unused_imports)]
-use glium::{glutin, Surface};
+use glium::Surface;
 use rubik::helper;
 
 use rubik::get_cube::create_cube;
 use rubik::helper::Action;
 
 fn main() {
-    let event_loop = glutin::event_loop::EventLoop::new();
-    let wb = glutin::window::WindowBuilder::new();
-    let cb = glutin::ContextBuilder::new()
-        //.with_depth_buffer(24)
-        .with_multisampling(4)
-        //.with_vsync(true);
-        ;
-    let display = glium::Display::new(wb, cb, &event_loop).unwrap();
+    let event_loop = EventLoop::new().unwrap();
+    let (window, display) = SimpleWindowBuilder::new()
+        .with_config_template_builder(
+            ConfigTemplateBuilder::new()
+                .with_multisampling(4)
+                .with_depth_size(24),
+        )
+        .build(&event_loop);
 
     let font_data = include_bytes!("../../fonts/Gidole-Regular.ttf");
     let font = FontRef::try_from_slice(font_data).unwrap();
@@ -46,57 +51,59 @@ fn main() {
 
     let mut delta_times: Vec<f32> = vec![];
 
-    let mut draw =
-        move |cube: &dyn BoundCubeTrait, timer: &Stopwatch, display: &Display, dt: f32| {
-            let (width, height) = display.get_framebuffer_dimensions();
+    let mut draw = move |cube: &dyn BoundCubeTrait,
+                         timer: &Stopwatch,
+                         display: &Display<WindowSurface>,
+                         dt: f32| {
+        let (width, height) = display.get_framebuffer_dimensions();
+
+        glyph_brush.queue(
+            Section::default()
+                .add_text(
+                    Text::new(&format!("{:0.2}", timer.elapsed().as_secs_f32()))
+                        .with_color([1., 1., 1., 1.])
+                        .with_scale(PxScale::from(60.)),
+                )
+                .with_bounds((width as f32, height as f32 / 2.0))
+                .with_screen_position((50., 50.)),
+        );
+
+        if env::var("SHOW_FPS").map(|var| var == "1").unwrap_or(false) {
+            delta_times.push(dt);
+            if delta_times.len() > 10 {
+                delta_times.remove(0);
+            }
+            let mean_delta = delta_times.iter().sum::<f32>() / delta_times.len() as f32;
 
             glyph_brush.queue(
                 Section::default()
                     .add_text(
-                        Text::new(&format!("{:0.2}", timer.elapsed().as_secs_f32()))
+                        Text::new(&format!("{:0.2}", 1. / mean_delta))
                             .with_color([1., 1., 1., 1.])
                             .with_scale(PxScale::from(60.)),
                     )
-                    .with_bounds((width as f32, height as f32 / 2.0))
-                    .with_screen_position((50., 50.)),
+                    .with_bounds((200., height as f32 / 2.0))
+                    .with_screen_position((width as f32 - 50., 50.))
+                    .with_layout(Layout::SingleLine {
+                        line_breaker: BuiltInLineBreaker::default(),
+                        h_align: HorizontalAlign::Right,
+                        v_align: VerticalAlign::Top,
+                    }),
             );
+        }
 
-            if env::var("SHOW_FPS").map(|var| var == "1").unwrap_or(false) {
-                delta_times.push(dt);
-                if delta_times.len() > 10 {
-                    delta_times.remove(0);
-                }
-                let mean_delta = delta_times.iter().sum::<f32>() / delta_times.len() as f32;
+        let mut target = display.draw();
 
-                glyph_brush.queue(
-                    Section::default()
-                        .add_text(
-                            Text::new(&format!("{:0.2}", 1. / mean_delta))
-                                .with_color([1., 1., 1., 1.])
-                                .with_scale(PxScale::from(60.)),
-                        )
-                        .with_bounds((200., height as f32 / 2.0))
-                        .with_screen_position((width as f32 - 50., 50.))
-                        .with_layout(Layout::SingleLine {
-                            line_breaker: BuiltInLineBreaker::default(),
-                            h_align: HorizontalAlign::Right,
-                            v_align: VerticalAlign::Top,
-                        }),
-                );
-            }
+        target.clear_color_and_depth((0.0, 0.0, 0.0, 1.0), 1.0);
+        glyph_brush.draw_queued(display, &mut target);
 
-            let mut target = display.draw();
-
-            target.clear_color_and_depth((0.0, 0.0, 0.0, 1.0), 1.0);
-            glyph_brush.draw_queued(display, &mut target);
-
-            cube.draw(&mut target);
-            target.finish().unwrap();
-        };
+        cube.draw(&mut target);
+        target.finish().unwrap();
+    };
 
     let mut frame_timer = Stopwatch::new();
 
-    helper::run_loop(event_loop, move |events| {
+    helper::run_loop(event_loop, window, move |events| {
         let dt = frame_timer.elapsed().as_secs_f32();
         frame_timer.restart();
 
@@ -106,97 +113,97 @@ fn main() {
 
         let mut action = Action::Continue;
         for event in events {
-            if let glutin::event::Event::WindowEvent {
-                event: glutin::event::WindowEvent::KeyboardInput { input, .. },
-                ..
-            } = event
-            {
-                if let glutin::event::ElementState::Pressed = input.state {
-                    if let Some(keycode) = input.virtual_keycode {
-                        if let VirtualKeyCode::Escape = keycode {
-                            action = Action::Stop;
-                        } else {
-                            let movement = match keycode {
-                                VirtualKeyCode::I => Some("R"),
-                                VirtualKeyCode::K => Some("R'"),
-                                VirtualKeyCode::E => Some("L'"),
-                                VirtualKeyCode::D => Some("L"),
-                                VirtualKeyCode::J => Some("U"),
-                                VirtualKeyCode::F => Some("U'"),
-                                VirtualKeyCode::L => Some("D'"),
-                                VirtualKeyCode::S => Some("D"),
-                                VirtualKeyCode::G => Some("F'"),
-                                VirtualKeyCode::H => Some("F"),
-                                VirtualKeyCode::W => Some("B"),
-                                VirtualKeyCode::O => Some("B'"),
-                                VirtualKeyCode::R => Some("l'"),
-                                VirtualKeyCode::U => Some("r"),
-                                VirtualKeyCode::V => Some("l"),
-                                VirtualKeyCode::M => Some("r'"),
-                                VirtualKeyCode::C => Some("u'"),
-                                VirtualKeyCode::Comma => Some("u"),
-                                VirtualKeyCode::Z => Some("d"),
-                                VirtualKeyCode::Slash => Some("d'"),
-                                VirtualKeyCode::X | VirtualKeyCode::Period => Some("M'"),
-                                VirtualKeyCode::Key5 | VirtualKeyCode::Key6 => Some("M"),
-                                VirtualKeyCode::T | VirtualKeyCode::Y => Some("x"),
-                                VirtualKeyCode::B | VirtualKeyCode::N => Some("x'"),
-                                VirtualKeyCode::Semicolon => Some("y"),
-                                VirtualKeyCode::A => Some("y'"),
-                                VirtualKeyCode::P => Some("z"),
-                                VirtualKeyCode::Q => Some("z'"),
-                                VirtualKeyCode::Space => {
-                                    cube.scramble();
-                                    timer.reset();
-                                    timer_enabled = true;
-                                    None
-                                }
-                                VirtualKeyCode::Back => {
-                                    cube.solve();
-                                    timer.reset();
-                                    timer_enabled = false;
-                                    None
-                                }
-                                VirtualKeyCode::NumpadSubtract
-                                | VirtualKeyCode::Minus
-                                | VirtualKeyCode::NumpadAdd
-                                | VirtualKeyCode::Equals
-                                | VirtualKeyCode::Plus => {
-                                    cube_size = (cube_size as i8
-                                        + match keycode {
-                                            VirtualKeyCode::NumpadSubtract
-                                            | VirtualKeyCode::Minus => -1i8,
-                                            VirtualKeyCode::NumpadAdd
-                                            | VirtualKeyCode::Plus
-                                            | VirtualKeyCode::Equals => 1i8,
-                                            _ => unreachable!(),
-                                        }) as usize;
-                                    cube_size = cube_size.clamp(1, 59);
-                                    cube = create_cube(&display, cube_size);
-                                    timer.reset();
-                                    timer_enabled = false;
-                                    None
-                                }
-                                _ => None,
-                            };
+            match event {
+                WindowEvent::Resized(new_size) => {
+                    display.resize((*new_size).into());
+                }
+                WindowEvent::KeyboardInput {
+                    event: key_event, ..
+                } => {
+                    if let ElementState::Pressed = key_event.state {
+                        if let PhysicalKey::Code(keycode) = key_event.physical_key {
+                            if let KeyCode::Escape = keycode {
+                                action = Action::Stop;
+                            } else {
+                                let movement = match keycode {
+                                    KeyCode::KeyI => Some("R"),
+                                    KeyCode::KeyK => Some("R'"),
+                                    KeyCode::KeyE => Some("L'"),
+                                    KeyCode::KeyD => Some("L"),
+                                    KeyCode::KeyJ => Some("U"),
+                                    KeyCode::KeyF => Some("U'"),
+                                    KeyCode::KeyL => Some("D'"),
+                                    KeyCode::KeyS => Some("D"),
+                                    KeyCode::KeyG => Some("F'"),
+                                    KeyCode::KeyH => Some("F"),
+                                    KeyCode::KeyW => Some("B"),
+                                    KeyCode::KeyO => Some("B'"),
+                                    KeyCode::KeyR => Some("l'"),
+                                    KeyCode::KeyU => Some("r"),
+                                    KeyCode::KeyV => Some("l"),
+                                    KeyCode::KeyM => Some("r'"),
+                                    KeyCode::KeyC => Some("u'"),
+                                    KeyCode::Comma => Some("u"),
+                                    KeyCode::KeyZ => Some("d"),
+                                    KeyCode::Slash => Some("d'"),
+                                    KeyCode::KeyX | KeyCode::Period => Some("M'"),
+                                    KeyCode::Digit5 | KeyCode::Digit6 => Some("M"),
+                                    KeyCode::KeyT | KeyCode::KeyY => Some("x"),
+                                    KeyCode::KeyB | KeyCode::KeyN => Some("x'"),
+                                    KeyCode::Semicolon => Some("y"),
+                                    KeyCode::KeyA => Some("y'"),
+                                    KeyCode::KeyP => Some("z"),
+                                    KeyCode::KeyQ => Some("z'"),
+                                    KeyCode::Space => {
+                                        cube.scramble();
+                                        timer.reset();
+                                        timer_enabled = true;
+                                        None
+                                    }
+                                    KeyCode::Backspace => {
+                                        cube.solve();
+                                        timer.reset();
+                                        timer_enabled = false;
+                                        None
+                                    }
+                                    KeyCode::NumpadSubtract
+                                    | KeyCode::Minus
+                                    | KeyCode::NumpadAdd
+                                    | KeyCode::Equal => {
+                                        cube_size = (cube_size as i8
+                                            + match keycode {
+                                                KeyCode::NumpadSubtract | KeyCode::Minus => -1i8,
+                                                KeyCode::NumpadAdd | KeyCode::Equal => 1i8,
+                                                _ => unreachable!(),
+                                            }) as usize;
+                                        cube_size = cube_size.clamp(1, 59);
+                                        cube = create_cube(&display, cube_size);
+                                        timer.reset();
+                                        timer_enabled = false;
+                                        None
+                                    }
+                                    _ => None,
+                                };
 
-                            if let Some(step) = movement {
-                                let step: NotationStep = step.parse().unwrap();
-                                let is_rotation =
-                                    !matches!(step.movement, Movement::CubeRotation(_));
+                                if let Some(step) = movement {
+                                    let step: NotationStep = step.parse().unwrap();
+                                    let is_rotation =
+                                        !matches!(step.movement, Movement::CubeRotation(_));
 
-                                cube.apply_notation_step(step);
-                                if is_rotation && !timer.is_running() && timer_enabled {
-                                    timer.restart();
-                                }
-                                if is_rotation && cube.is_solved() {
-                                    timer.stop();
-                                    timer_enabled = false;
+                                    cube.apply_notation_step(step);
+                                    if is_rotation && !timer.is_running() && timer_enabled {
+                                        timer.restart();
+                                    }
+                                    if is_rotation && cube.is_solved() {
+                                        timer.stop();
+                                        timer_enabled = false;
+                                    }
                                 }
                             }
                         }
                     }
                 }
+                _ => (),
             }
         }
         action

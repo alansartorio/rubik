@@ -1,8 +1,8 @@
 use bimap::BiMap;
 use enum_map::Enum;
 use lazy_static::lazy_static;
-use rand::distributions::uniform::SampleRange;
-use rand::seq::SliceRandom;
+use rand::seq::IndexedRandom;
+use rand::RngExt;
 use std::error::Error;
 use std::ops::Neg;
 use std::str::FromStr;
@@ -358,11 +358,11 @@ impl<const N: usize> From<NotationAlgorythm> for Algorythm<N> {
 impl<const N: usize> Algorythm<N> {
     pub fn random(depth: u8) -> Algorythm<N> {
         let mut steps = vec![];
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         for _ in 0..depth {
             let axis = *Axis::iter().collect::<Vec<_>>().choose(&mut rng).unwrap();
-            let layer = (0..N).sample_single(&mut rng);
-            let count: i8 = (-1..=2).sample_single(&mut rng);
+            let layer = rng.random_range(0..N);
+            let count: i8 = rng.random_range(-1..=2);
             let mut layers = [false; N];
             layers[layer] = true;
             steps.push(Step::<N> {
